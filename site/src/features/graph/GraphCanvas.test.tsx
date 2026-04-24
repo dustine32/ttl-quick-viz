@@ -1,67 +1,74 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import { Provider } from 'react-redux';
+import { render, screen } from '@testing-library/react';
 import { MantineProvider } from '@mantine/core';
-import { vi } from 'vitest';
-import type { ReactNode } from 'react';
-import { store } from '@/app/store';
-
-// Mock elkjs so we get a deterministic ready state.
-vi.mock('elkjs/lib/elk.bundled.js', () => {
-  class FakeELK {
-    async layout(input: { children: Array<{ id: string }>; edges: unknown[] }) {
-      return {
-        ...input,
-        children: input.children.map((c, i) => ({ ...c, x: i * 100, y: 0 })),
-      };
-    }
-  }
-  return { default: FakeELK };
-});
-
-// Mock @xyflow/react: the real lib does DOM measurement that jsdom handles badly.
-// Keep real enums (Position, MarkerType, BackgroundVariant) via importOriginal;
-// only override the components that touch the DOM.
-vi.mock('@xyflow/react', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@xyflow/react')>();
-  return {
-    ...actual,
-    ReactFlow: ({ children, nodes }: { children: ReactNode; nodes: Array<{ id: string }> }) => (
-      <div data-testid="react-flow" data-node-count={nodes.length}>
-        {children}
-      </div>
-    ),
-    Background: () => <div data-testid="rf-background" />,
-    MiniMap: () => <div data-testid="rf-minimap" />,
-    Controls: () => <div data-testid="rf-controls" />,
-  };
-});
-
 import { GraphCanvas } from '@/features/graph/GraphCanvas';
+
+// Mock the elk layout hook so GraphCanvas is the unit under test.
+vi.mock('@/features/graph/useElkLayout', () => ({
+  useElkLayout: () => ({ status: 'ready', nodes: [], edges: [] }),
+}));
+
+// Controlled API hooks
+const useGetGraphsQueryMock = vi.fn();
+const useGetGraphQueryMock = vi.fn();
+vi.mock('@/features/graph/graphApi', () => ({
+  useGetGraphsQuery: (...args: unknown[]) => useGetGraphsQueryMock(...args),
+  useGetGraphQuery: (...args: unknown[]) => useGetGraphQueryMock(...args),
+}));
 
 function renderCanvas() {
   return render(
-    <Provider store={store}>
-      <MantineProvider>
-        <GraphCanvas />
-      </MantineProvider>
-    </Provider>,
+    <MantineProvider>
+      <GraphCanvas />
+    </MantineProvider>,
   );
 }
 
-describe('GraphCanvas', () => {
-  it('shows loading, then renders the ReactFlow container once layout is ready', async () => {
+afterEach(() => {
+  useGetGraphsQueryMock.mockReset();
+  useGetGraphQueryMock.mockReset();
+});
+
+describe('<GraphCanvas />', () => {
+  it('shows loading while the graph list is loading', () => {
+    useGetGraphsQueryMock.mockReturnValue({ isLoading: true });
+    useGetGraphQueryMock.mockReturnValue({ isLoading: false });
     renderCanvas();
+    expect(screen.getByText(/loading/i)).toBeInTheDocument();
+  });
 
-    expect(screen.getByText(/Loading/i)).toBeInTheDocument();
+  it('shows empty state when the list is empty', () => {
+    useGetGraphsQueryMock.mockReturnValue({ data: [], isLoading: false });
+    useGetGraphQueryMock.mockReturnValue({ isLoading: false });
+    renderCanvas();
+    expect(screen.getByText(/no graphs/i)).toBeInTheDocument();
+  });
 
-    await waitFor(() => {
-      expect(screen.getByTestId('react-flow')).toBeInTheDocument();
+  it('requests the first graph id from the list', () => {
+    useGetGraphsQueryMock.mockReturnValue({
+      data: [
+        { id: 'alpha', nodeCount: 1, edgeCount: 0 },
+        { id: 'zeta', nodeCount: 2, edgeCount: 1 },
+      ],
+      isLoading: false,
     });
+    useGetGraphQueryMock.mockReturnValue({
+      data: { nodes: [], edges: [] },
+      isLoading: false,
+    });
+    renderCanvas();
+    expect(useGetGraphQueryMock).toHaveBeenCalledWith('alpha', { skip: false });
+  });
 
-    const rf = screen.getByTestId('react-flow');
-    expect(Number(rf.getAttribute('data-node-count'))).toBeGreaterThan(0);
-    expect(screen.getByTestId('rf-minimap')).toBeInTheDocument();
-    expect(screen.getByTestId('rf-controls')).toBeInTheDocument();
-    expect(screen.getByTestId('rf-background')).toBeInTheDocument();
+  it('shows error state when the graph fetch errors', () => {
+    useGetGraphsQueryMock.mockReturnValue({
+      data: [{ id: 'alpha', nodeCount: 1, edgeCount: 0 }],
+      isLoading: false,
+    });
+    useGetGraphQueryMock.mockReturnValue({
+      isLoading: false,
+      error: { status: 500 },
+    });
+    renderCanvas();
+    expect(screen.getByText(/failed to load/i)).toBeInTheDocument();
   });
 });
