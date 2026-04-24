@@ -19,16 +19,22 @@ vi.mock('elkjs/lib/elk.bundled.js', () => {
 });
 
 // Mock @xyflow/react: the real lib does DOM measurement that jsdom handles badly.
-vi.mock('@xyflow/react', () => ({
-  ReactFlow: ({ children, nodes }: { children: ReactNode; nodes: Array<{ id: string }> }) => (
-    <div data-testid="react-flow" data-node-count={nodes.length}>
-      {children}
-    </div>
-  ),
-  Background: () => <div data-testid="rf-background" />,
-  MiniMap: () => <div data-testid="rf-minimap" />,
-  Controls: () => <div data-testid="rf-controls" />,
-}));
+// Keep real enums (Position, MarkerType, BackgroundVariant) via importOriginal;
+// only override the components that touch the DOM.
+vi.mock('@xyflow/react', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@xyflow/react')>();
+  return {
+    ...actual,
+    ReactFlow: ({ children, nodes }: { children: ReactNode; nodes: Array<{ id: string }> }) => (
+      <div data-testid="react-flow" data-node-count={nodes.length}>
+        {children}
+      </div>
+    ),
+    Background: () => <div data-testid="rf-background" />,
+    MiniMap: () => <div data-testid="rf-minimap" />,
+    Controls: () => <div data-testid="rf-controls" />,
+  };
+});
 
 import { GraphCanvas } from '@/features/graph/GraphCanvas';
 

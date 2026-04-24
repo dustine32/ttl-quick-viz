@@ -2,6 +2,21 @@ import { configureStore } from '@reduxjs/toolkit';
 import { graphApi } from '@/features/graph/graphApi';
 import type { Graph, GraphSummary } from '@/features/graph/types';
 
+// vitest's fetch polyfill (undici) requires absolute URLs for `new Request()`.
+// Patch globalThis.Request before any RTK Query code runs so relative paths
+// like `/api/graphs` are resolved against http://localhost.
+const _OriginalRequest = globalThis.Request;
+class _AbsoluteRequest extends _OriginalRequest {
+  constructor(input: RequestInfo | URL, init?: RequestInit) {
+    if (typeof input === 'string' && input.startsWith('/')) {
+      super(`http://localhost${input}`, init);
+    } else {
+      super(input as any, init);
+    }
+  }
+}
+(globalThis as any).Request = _AbsoluteRequest;
+
 function makeStore() {
   return configureStore({
     reducer: { [graphApi.reducerPath]: graphApi.reducer },
@@ -33,8 +48,8 @@ describe('graphApi', () => {
       graphApi.endpoints.getGraphs.initiate(),
     );
 
-    expect((globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0][0])
-      .toMatch(/\/api\/graphs$/);
+    const calledRequest = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0][0] as Request;
+    expect(calledRequest.url).toMatch(/\/api\/graphs$/);
     expect(result.data).toEqual(summaries);
   });
 
@@ -55,8 +70,8 @@ describe('graphApi', () => {
       graphApi.endpoints.getGraph.initiate('one'),
     );
 
-    expect((globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0][0])
-      .toMatch(/\/api\/graphs\/one$/);
+    const calledRequest = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0][0] as Request;
+    expect(calledRequest.url).toMatch(/\/api\/graphs\/one$/);
     expect(result.data).toEqual(graph);
   });
 });

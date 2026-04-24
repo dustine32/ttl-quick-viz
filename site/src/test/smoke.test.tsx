@@ -16,12 +16,16 @@ vi.mock('elkjs/lib/elk.bundled.js', () => {
   return { default: FakeELK };
 });
 
-vi.mock('@xyflow/react', () => ({
-  ReactFlow: () => <div data-testid="react-flow" />,
-  Background: () => null,
-  MiniMap: () => null,
-  Controls: () => null,
-}));
+vi.mock('@xyflow/react', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@xyflow/react')>();
+  return {
+    ...actual,
+    ReactFlow: () => <div data-testid="react-flow" />,
+    Background: () => null,
+    MiniMap: () => null,
+    Controls: () => null,
+  };
+});
 
 import App from '@/App';
 
