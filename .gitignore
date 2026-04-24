@@ -1,0 +1,18 @@
+# Cross-cutting ignores. Language-specific rules live in each subproject's .gitignore.
+
+# === Editors / OS ===
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# === Env / secrets ===
+.env
+.env.*
+!.env.example
+
+# === Claude / agent scratch ===
+.claude/
+.superpowers/
