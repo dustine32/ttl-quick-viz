@@ -21,4 +21,5 @@ export type GraphSummary = {
   id: string;
   nodeCount: number;
   edgeCount: number;
+  lastConvertedAt?: number | null;
 };

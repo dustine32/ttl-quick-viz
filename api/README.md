@@ -3,31 +3,89 @@
 Read-only FastAPI service that serves graph JSON (produced by
 `../conversion/ttl2json.py`) to the `site/` SPA.
 
-## Run
+## Quick start
+
+Prerequisites: Python 3.11+, [Poetry](https://python-poetry.org/). Optionally [uv](https://docs.astral.sh/uv/) to manage Python itself.
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements-dev.txt
-uvicorn app.main:app --reload --port 8000
+poetry install                   # creates .venv/ in-project
+cp .env.example .env             # then edit — GRAPHS_DIR is required
 ```
 
-OpenAPI docs: http://localhost:8000/docs
+Activate the venv once, then pick whichever run style you prefer:
+
+```bash
+source .venv/Scripts/activate    # Git Bash on Windows
+# .venv\Scripts\activate         # PowerShell
+# source .venv/bin/activate      # macOS / Linux
+
+python main.py                   # plain script
+python -m app                    # module form (uses src/app/__main__.py)
+uvicorn main:app --reload        # dev: auto-reload on file change
+ttl-viz-api                      # Poetry script entry point
+```
+
+All four launch the same FastAPI app. Server listens on <http://127.0.0.1:8000> by default; OpenAPI docs at `/docs`.
+
+> `main.py` and `src/app/__main__.py` are thin entry points over `app.api.app.create_app`. Choose by taste — `python main.py` if you like a top-level script, `python -m app` if you prefer module form, `uvicorn main:app --reload` during active development.
+
+## Layout
+
+```
+api/
+├── pyproject.toml
+├── .env.example
+├── Dockerfile
+├── src/app/
+│   ├── domain/             # pure business objects + translator
+│   ├── repositories/       # IO edge
+│   ├── services/           # orchestration, transport-agnostic
+│   └── api/                # REST transport (FastAPI)
+└── tests/
+    ├── unit/
+    └── integration/
+```
 
 ## Endpoints
 
-- `GET /graphs` — list available graphs as `[{ id, nodeCount, edgeCount }]`.
-- `GET /graphs/{id}` — return one graph as `{ nodes, edges }` (translated into the site's shape).
-- `GET /healthz` — liveness probe.
+- `GET /api/graphs` — list available graphs as `[{ id, nodeCount, edgeCount }]`.
+- `GET /api/graphs/{id}` — one graph as `{ nodes, edges }`.
+- `GET /api/healthz` — liveness probe.
 
-## Config
+## Configuration
 
-| Env var | Default | Meaning |
-|---|---|---|
-| `GRAPHS_DIR` | `../conversion/downloads/output` | Directory scanned for `<id>.json` files. |
+| Env var | Default | Required | Meaning |
+|---|---|---|---|
+| `GRAPHS_DIR` | — | yes | Directory scanned for `<id>.json` files. |
+| `HOST` | `127.0.0.1` | no | Bind address. |
+| `PORT` | `8000` | no | Bind port. |
+| `LOG_LEVEL` | `INFO` | no | stdlib logging level. |
 
-## Test
+Settings load from `.env` if present; env vars override.
+
+## Tests
 
 ```bash
-pytest -v
+source .venv/Scripts/activate    # if not already active
+pytest                           # full suite
+pytest tests/test_translate.py   # one file
 ```
+
+Suite lives under `tests/` (flat — `conftest.py`, `test_routes.py`, `test_store.py`, `test_translate.py`). `ruff check src tests` lints; `mypy` type-checks.
+
+## Docker
+
+```bash
+docker build -t ttl-viz-api .
+docker run --rm -p 8000:8000 \
+  -e GRAPHS_DIR=/data/graphs \
+  -e HOST=0.0.0.0 \
+  -v /abs/path/to/graphs:/data/graphs \
+  ttl-viz-api
+```
+
+## Troubleshooting
+
+- **`poetry install` lands packages in `...\uv\python\...` instead of `.venv/`.** Your shell has `VIRTUAL_ENV` set to a uv-managed Python install directory (often set by the VSCode Python extension). Check with `echo $VIRTUAL_ENV`. Fix by either pointing VSCode's interpreter at `.\.venv\Scripts\python.exe` (Command Palette → *Python: Select Interpreter*) or running `unset VIRTUAL_ENV` before `poetry install`.
+- **`poetry: command not found`.** Install as a uv tool so it lands on `PATH`: `uv tool install poetry`.
+- **Startup fails with a pydantic validation error for `GRAPHS_DIR`.** Intentional — the service refuses to start without a valid graph directory. Either copy `.env.example` to `.env` and set `GRAPHS_DIR`, or export it in your shell.

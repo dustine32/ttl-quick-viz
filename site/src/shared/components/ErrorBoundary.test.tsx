@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { ErrorBoundary } from '@/shared/components/ErrorBoundary';
 
-function Boom() {
+function Boom(): never {
   throw new Error('boom');
 }
 

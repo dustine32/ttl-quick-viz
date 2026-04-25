@@ -2,11 +2,15 @@ import { useEffect, useRef, useState } from 'react';
 import ELK from 'elkjs/lib/elk.bundled.js';
 import { MarkerType, type Edge, type Node } from '@xyflow/react';
 import type { Graph } from '@/features/graph/types';
-import { elkLayoutOptions, NODE_WIDTH, NODE_HEIGHT } from '@/features/graph/elkOptions';
+import {
+  getElkOptions,
+  MIN_NODE_WIDTH,
+  NODE_HEIGHT,
+} from '@/features/graph/elkOptions';
 
 type LayoutStatus = 'idle' | 'laying-out' | 'ready' | 'error';
 
-type GraphNodeData = { label: string };
+type GraphNodeData = { label: string; color?: string; width?: number };
 
 export type UseElkLayoutResult = {
   status: LayoutStatus;
@@ -67,7 +71,12 @@ function buildEdge(
   };
 }
 
-export function useElkLayout(graph: Graph | undefined): UseElkLayoutResult {
+export function useElkLayout(
+  graph: Graph | undefined,
+  algo: string = 'layered',
+  nonce: number = 0,
+  widthFor?: (nodeId: string) => number,
+): UseElkLayoutResult {
   const [result, setResult] = useState<UseElkLayoutResult>({
     status: 'idle',
     nodes: [],
@@ -85,12 +94,14 @@ export function useElkLayout(graph: Graph | undefined): UseElkLayoutResult {
     const myRequest = ++requestIdRef.current;
     setResult((prev) => ({ ...prev, status: 'laying-out' }));
 
+    const widthOf = (id: string): number => widthFor?.(id) ?? MIN_NODE_WIDTH;
+
     const elkInput = {
       id: 'root',
-      layoutOptions: elkLayoutOptions,
+      layoutOptions: getElkOptions(algo),
       children: graph.nodes.map((n) => ({
         id: n.id,
-        width: NODE_WIDTH,
+        width: widthOf(n.id),
         height: NODE_HEIGHT,
       })),
       edges: graph.edges.map((e) => ({
@@ -111,7 +122,10 @@ export function useElkLayout(graph: Graph | undefined): UseElkLayoutResult {
             id: c.id,
             type: 'pretty',
             position: { x: c.x ?? 0, y: c.y ?? 0 },
-            data: { label: original?.label ?? c.id },
+            data: {
+              label: original?.label ?? c.id,
+              width: c.width ?? widthOf(c.id),
+            },
           };
         });
 
@@ -120,7 +134,7 @@ export function useElkLayout(graph: Graph | undefined): UseElkLayoutResult {
           rects.set(c.id, {
             x: c.x ?? 0,
             y: c.y ?? 0,
-            w: c.width ?? NODE_WIDTH,
+            w: c.width ?? widthOf(c.id),
             h: c.height ?? NODE_HEIGHT,
           });
         });
@@ -173,7 +187,7 @@ export function useElkLayout(graph: Graph | undefined): UseElkLayoutResult {
       });
 
     return () => { cancelled = true; };
-  }, [graph]);
+  }, [graph, algo, nonce]);
 
   return result;
 }

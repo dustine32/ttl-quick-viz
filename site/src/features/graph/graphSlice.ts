@@ -1,6 +1,12 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
-export type GraphRenderer = 'xyflow' | 'cytoscape';
+export type GraphRenderer =
+  | 'xyflow'
+  | 'cytoscape'
+  | 'force'
+  | 'force3d'
+  | 'sigma'
+  | 'graphin';
 
 type GraphUiState = {
   selectedGraphId: string;
@@ -8,7 +14,7 @@ type GraphUiState = {
 };
 
 const initialState: GraphUiState = {
-  selectedGraphId: 'sample',
+  selectedGraphId: '',
   renderer: 'xyflow',
 };
 

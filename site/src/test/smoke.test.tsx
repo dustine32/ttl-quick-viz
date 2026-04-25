@@ -27,6 +27,13 @@ vi.mock('@xyflow/react', async (importOriginal) => {
   };
 });
 
+vi.mock('@/features/graph-sigma', () => ({ SigmaCanvas: () => null }));
+vi.mock('@/features/graph-graphin', () => ({ GraphinCanvas: () => null }));
+vi.mock('@/features/graph-force', () => ({
+  ForceCanvas: () => null,
+  ForceCanvas3D: () => null,
+}));
+
 import App from '@/App';
 
 describe('App', () => {

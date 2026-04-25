@@ -13,15 +13,26 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@antv/graphin": "^3.0.5",
     "@mantine/core": "^9.1.0",
     "@mantine/hooks": "^9.1.0",
+    "@mantine/notifications": "^9.1.0",
+    "@react-sigma/core": "^5.0.6",
     "@reduxjs/toolkit": "^2.11.2",
+    "@types/dagre": "^0.7.54",
     "@xyflow/react": "^12.10.2",
     "cytoscape": "^3.33.2",
+    "cytoscape-dagre": "^2.5.0",
+    "dagre": "^0.8.5",
     "elkjs": "^0.11.1",
+    "graphology": "^0.26.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
-    "react-redux": "^9.2.0"
+    "react-force-graph-2d": "^1.29.1",
+    "react-force-graph-3d": "^1.29.1",
+    "react-redux": "^9.2.0",
+    "react-resizable-panels": "^2.1.9",
+    "sigma": "^3.0.2"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",

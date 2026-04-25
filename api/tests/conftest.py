@@ -7,8 +7,8 @@ from typing import Any, Callable
 import pytest
 from fastapi.testclient import TestClient
 
+from app.api.app import create_app
 from app.config import Settings, get_settings
-from app.main import app
 
 
 @pytest.fixture
@@ -28,19 +28,15 @@ def write_graph(graphs_dir: Path) -> Callable[[str, Any], None]:
 
 
 @pytest.fixture
-def client(graphs_dir: Path, monkeypatch: pytest.MonkeyPatch):
-    # The startup handler in main.py calls get_settings() directly, bypassing
-    # dependency_overrides. Set GRAPHS_DIR in the env so Settings() picks up
-    # graphs_dir at startup, and clear the lru_cache so the override takes effect.
-    monkeypatch.setenv("GRAPHS_DIR", str(graphs_dir))
-    get_settings.cache_clear()
+def settings(graphs_dir: Path) -> Settings:
+    return Settings(graphs_dir=graphs_dir)
 
-    def override() -> Settings:
-        return Settings(graphs_dir=graphs_dir)
 
-    app.dependency_overrides[get_settings] = override
+@pytest.fixture
+def client(settings: Settings):
+    app = create_app(settings)
+    app.dependency_overrides[get_settings] = lambda: settings
     try:
         yield TestClient(app)
     finally:
         app.dependency_overrides.clear()
-        get_settings.cache_clear()

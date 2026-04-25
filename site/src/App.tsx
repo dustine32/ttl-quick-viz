@@ -1,29 +1,43 @@
-import { SegmentedControl } from '@mantine/core';
-import { useAppDispatch, useAppSelector } from '@/app/hooks';
-import { GraphCanvas, setRenderer, type GraphRenderer } from '@/features/graph';
+import { useAppSelector } from '@/app/hooks';
+import { GraphCanvas } from '@/features/graph';
 import { CytoscapeCanvas } from '@/features/graph-cytoscape';
+import { ForceCanvas, ForceCanvas3D } from '@/features/graph-force';
+import { SigmaCanvas } from '@/features/graph-sigma';
+import { GraphinCanvas } from '@/features/graph-graphin';
+import { CommandPalette } from '@/features/search';
+import { useUrlSync } from '@/features/url-state';
+import {
+  AppShell,
+  LeftPanel,
+  RightPanel,
+  StatusBar,
+  Toolbar,
+  useAppHotkeys,
+} from '@/layout';
 
 export default function App() {
   const renderer = useAppSelector((s) => s.graph.renderer);
-  const dispatch = useAppDispatch();
+  useAppHotkeys();
+  useUrlSync();
 
   return (
-    <div className="flex h-dvh flex-col bg-neutral-50">
-      <header className="flex items-center justify-between border-b border-neutral-200 px-4 py-2">
-        <h1 className="text-sm font-medium text-neutral-700">TTL Quick Viz</h1>
-        <SegmentedControl
-          size="xs"
-          value={renderer}
-          onChange={(value) => dispatch(setRenderer(value as GraphRenderer))}
-          data={[
-            { label: 'React Flow', value: 'xyflow' },
-            { label: 'Cytoscape', value: 'cytoscape' },
-          ]}
-        />
-      </header>
-      <main className="flex-1 min-h-0">
-        {renderer === 'xyflow' ? <GraphCanvas /> : <CytoscapeCanvas />}
-      </main>
-    </div>
+    <>
+      <AppShell
+        header={<Toolbar />}
+        navbar={<LeftPanel />}
+        aside={<RightPanel />}
+        footer={<StatusBar />}
+      >
+        <div className="flex-1 min-h-0 bg-neutral-50">
+          {renderer === 'xyflow' && <GraphCanvas />}
+          {renderer === 'cytoscape' && <CytoscapeCanvas />}
+          {renderer === 'force' && <ForceCanvas />}
+          {renderer === 'force3d' && <ForceCanvas3D />}
+          {renderer === 'sigma' && <SigmaCanvas />}
+          {renderer === 'graphin' && <GraphinCanvas />}
+        </div>
+      </AppShell>
+      <CommandPalette />
+    </>
   );
 }
