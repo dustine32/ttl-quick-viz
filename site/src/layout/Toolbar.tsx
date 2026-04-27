@@ -1,42 +1,34 @@
-import {
-  ActionIcon,
-  Burger,
-  Divider,
-  Group,
-  Select,
-  Tooltip,
-} from '@mantine/core';
+import { ActionIcon, Menu, SegmentedControl, Select, Tooltip } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useState } from 'react';
+import {
+  LuCheck,
+  LuDownload,
+  LuEllipsis,
+  LuLink,
+  LuNetwork,
+  LuRefreshCw,
+} from 'react-icons/lu';
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
 import { setRenderer, type GraphRenderer, useConvertAllMutation } from '@/features/graph';
-import { LayoutPicker } from '@/features/view-config';
+import { SearchBox } from '@/features/search';
 import {
-  requestFitView,
-  requestRelayout,
-  setPaletteOpen,
-  toggleLeftPanel,
-  toggleRightPanel,
-} from '@/features/ui';
-import {
-  IconDownload,
-  IconFitView,
-  IconLayout,
-  IconLink,
-  IconPanelRight,
-  IconRefresh,
-  IconSearch,
-} from '@/layout/icons';
+  LayoutPicker,
+  selectStandaloneMode,
+  setStandaloneMode,
+  type StandaloneMode,
+} from '@/features/view-config';
 
 export function Toolbar() {
   const dispatch = useAppDispatch();
   const renderer = useAppSelector((s) => s.graph.renderer);
-  const leftPanelOpen = useAppSelector((s) => s.ui.leftPanelOpen);
-  const rightPanelOpen = useAppSelector((s) => s.ui.rightPanelOpen);
+  const standaloneMode = useAppSelector(selectStandaloneMode);
   const [copied, setCopied] = useState(false);
   const [convertAll, { isLoading: rebuilding }] = useConvertAllMutation();
+  const layoutVisible =
+    standaloneMode !== 'only' && (renderer === 'xyflow' || renderer === 'cytoscape');
 
-  const handleRebuild = async () => {
+  const handleRebuildAll = async () => {
     try {
       const res = await convertAll().unwrap();
       const failed = res.results.filter((r) => !r.ok);
@@ -83,29 +75,49 @@ export function Toolbar() {
   };
 
   return (
-    <Group h="100%" px="sm" gap="sm" wrap="nowrap" justify="space-between">
-      <Group gap="sm" wrap="nowrap">
-        <Burger
-          size="sm"
-          opened={leftPanelOpen}
-          onClick={() => dispatch(toggleLeftPanel())}
-          aria-label="Toggle left panel"
-        />
-        <h1 className="m-0 text-sm font-semibold tracking-tight text-neutral-800">
-          TTL Quick Viz
-        </h1>
-      </Group>
+    <div className="flex h-full flex-nowrap items-center justify-between gap-5 px-4">
+      {/* Brand */}
+      <div className="flex min-w-[200px] flex-nowrap items-center gap-2.5">
+        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-blue-500/10 text-blue-600">
+          <LuNetwork size={16} />
+        </div>
+        <div className="flex items-baseline gap-2">
+          <h1 className="m-0 text-sm font-semibold tracking-tight text-gray-900">
+            TTL Quick Viz
+          </h1>
+          <span className="rounded bg-blue-500/10 px-1.5 py-[1px] text-[9.5px] font-semibold uppercase tracking-wider text-blue-600">
+            Beta
+          </span>
+        </div>
+      </div>
 
-      <Group gap="xs" wrap="nowrap" align="center">
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
-          Renderer
-        </span>
+      {/* Search */}
+      <div className="flex flex-1 flex-nowrap items-center justify-center gap-3">
+        <SearchBox />
+      </div>
+
+      {/* Renderer / global actions */}
+      <div className="flex flex-nowrap items-center gap-2.5">
+        <Tooltip label="Standalone nodes" withArrow openDelay={400}>
+          <SegmentedControl
+            size="xs"
+            value={standaloneMode}
+            aria-label="Standalone nodes"
+            data={[
+              { value: 'hide', label: 'Connected' },
+              { value: 'both', label: 'All' },
+              { value: 'only', label: 'Orphans' },
+            ]}
+            onChange={(v) => dispatch(setStandaloneMode(v as StandaloneMode))}
+          />
+        </Tooltip>
         <Select
           size="xs"
-          w={150}
+          w={130}
           value={renderer}
           allowDeselect={false}
           aria-label="Renderer"
+          disabled={standaloneMode === 'only'}
           data={[
             { value: 'xyflow', label: 'React Flow' },
             { value: 'cytoscape', label: 'Cytoscape' },
@@ -113,91 +125,52 @@ export function Toolbar() {
             { value: 'force3d', label: 'Force 3D' },
             { value: 'sigma', label: 'Sigma (WebGL)' },
             { value: 'graphin', label: 'Graphin (G6)' },
+            { value: 'tree', label: 'Tree / Mind map' },
           ]}
           onChange={(v) => {
             if (v) dispatch(setRenderer(v as GraphRenderer));
           }}
         />
-        {(renderer === 'xyflow' || renderer === 'cytoscape') && (
-          <>
-            <Divider orientation="vertical" mx={2} />
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
-              Layout
-            </span>
-            <LayoutPicker />
-          </>
-        )}
-      </Group>
+        {layoutVisible && <LayoutPicker />}
 
-      <Group gap={4} wrap="nowrap">
-        <Tooltip label="Rebuild all graphs from .ttl (Shift+R)">
-          <ActionIcon
-            variant="subtle"
-            color="gray"
-            aria-label="Rebuild all graphs"
-            loading={rebuilding}
-            onClick={handleRebuild}
-          >
-            <IconRefresh />
-          </ActionIcon>
-        </Tooltip>
-        <Tooltip label="Search nodes (Ctrl+K)">
-          <ActionIcon
-            variant="subtle"
-            color="gray"
-            aria-label="Search nodes"
-            onClick={() => dispatch(setPaletteOpen(true))}
-          >
-            <IconSearch />
-          </ActionIcon>
-        </Tooltip>
-        <Tooltip label="Fit view (F)">
-          <ActionIcon
-            variant="subtle"
-            color="gray"
-            aria-label="Fit view"
-            onClick={() => dispatch(requestFitView())}
-          >
-            <IconFitView />
-          </ActionIcon>
-        </Tooltip>
-        <Tooltip label="Re-run layout (R)">
-          <ActionIcon
-            variant="subtle"
-            color="gray"
-            aria-label="Re-run layout"
-            onClick={() => dispatch(requestRelayout())}
-          >
-            <IconLayout />
-          </ActionIcon>
-        </Tooltip>
-        <Tooltip label={copied ? 'Copied!' : 'Copy shareable link'}>
-          <ActionIcon
-            variant="subtle"
-            color={copied ? 'teal' : 'gray'}
-            aria-label="Copy shareable link"
-            onClick={copyLink}
-          >
-            <IconLink />
-          </ActionIcon>
-        </Tooltip>
-        <Tooltip label="Export (coming soon)">
-          <ActionIcon variant="subtle" color="gray" aria-label="Export" disabled>
-            <IconDownload />
-          </ActionIcon>
-        </Tooltip>
-        <Divider orientation="vertical" mx={4} />
-        <Tooltip label="Toggle right panel (Ctrl+Alt+B)">
-          <ActionIcon
-            variant={rightPanelOpen ? 'light' : 'subtle'}
-            color="gray"
-            aria-label="Toggle right panel"
-            onClick={() => dispatch(toggleRightPanel())}
-          >
-            <IconPanelRight />
-          </ActionIcon>
-        </Tooltip>
-      </Group>
-    </Group>
+        <Menu position="bottom-end" shadow="md" width={220}>
+          <Menu.Target>
+            <Tooltip label="More" withArrow>
+              <ActionIcon variant="subtle" color="gray" aria-label="More actions">
+                <LuEllipsis />
+              </ActionIcon>
+            </Tooltip>
+          </Menu.Target>
+          <Menu.Dropdown>
+            <Menu.Label>Data</Menu.Label>
+            <Menu.Item
+              leftSection={<LuRefreshCw size={14} />}
+              onClick={handleRebuildAll}
+              disabled={rebuilding}
+              rightSection={<span className="text-[10px] text-neutral-500">⇧R</span>}
+            >
+              {rebuilding ? 'Rebuilding…' : 'Rebuild all graphs'}
+            </Menu.Item>
+
+            <Menu.Divider />
+            <Menu.Label>Share</Menu.Label>
+            <Menu.Item
+              leftSection={copied ? <LuCheck size={14} /> : <LuLink size={14} />}
+              onClick={copyLink}
+              color={copied ? 'teal' : undefined}
+            >
+              {copied ? 'Link copied' : 'Copy shareable link'}
+            </Menu.Item>
+            <Menu.Item
+              leftSection={<LuDownload size={14} />}
+              disabled
+              rightSection={<span className="text-[10px] text-neutral-500">soon</span>}
+            >
+              Export image
+            </Menu.Item>
+          </Menu.Dropdown>
+        </Menu>
+      </div>
+    </div>
   );
 }

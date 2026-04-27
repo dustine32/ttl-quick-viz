@@ -70,7 +70,7 @@ docker build -t ttl-viz-api .   # build runtime image
 
 - `src/app/config.py` — pydantic-settings `Settings` loads `.env` if present; env vars always win. Cached via `lru_cache` on `get_settings()` — **clear the cache in tests** (`get_settings.cache_clear()`) after mutating env.
 - `GRAPHS_DIR` is required. `create_app` refuses to start if the path does not exist or is not a directory.
-- Other settings: `HOST` (default `127.0.0.1`), `PORT` (`8000`), `LOG_LEVEL` (`INFO`).
+- `HOST` and `PORT` are also required — no defaults. The app refuses to start without them. `.env.example` lists working dev values; copy it to `.env` or export them in the shell. `LOG_LEVEL` defaults to `INFO`. CORS allows all origins — local dev tool, not a setting.
 
 ## Gotchas
 

@@ -17,8 +17,10 @@ import {
   selectHiddenPredicates,
   selectHiddenTypes,
   selectLabelMode,
+  selectMinDegree,
   selectRevealedNodeIds,
   selectSizeByDegree,
+  selectStandaloneMode,
   useGraphDerivedData,
 } from '@/features/view-config';
 import { revealNode } from '@/features/view-config/viewConfigSlice';
@@ -48,10 +50,13 @@ export function ForceCanvas3D() {
   const focusDepth = useAppSelector(selectFocusDepth);
   const revealedNodeIds = useAppSelector(selectRevealedNodeIds);
   const sizeByDegree = useAppSelector(selectSizeByDegree);
+  const standaloneMode = useAppSelector(selectStandaloneMode);
+  const minDegree = useAppSelector(selectMinDegree);
   const fitViewNonce = useAppSelector((s) => s.ui.fitViewNonce);
   const revealNonce = useAppSelector((s) => s.ui.revealNonce);
   const relayoutNonce = useAppSelector((s) => s.ui.relayoutNonce);
   const selectedNodeId = useAppSelector((s) => s.ui.selectedNodeId);
+  const selectedEdgeId = useAppSelector((s) => s.ui.selectedEdgeId);
 
   const { data, isLoading, error } = useGetGraphQuery(selectedGraphId, {
     skip: !selectedGraphId,
@@ -68,6 +73,8 @@ export function ForceCanvas3D() {
       focusNodeId,
       focusDepth,
       revealedNodeIds,
+      standaloneMode,
+      minDegree,
     });
   }, [
     data,
@@ -77,6 +84,8 @@ export function ForceCanvas3D() {
     focusNodeId,
     focusDepth,
     revealedNodeIds,
+    standaloneMode,
+    minDegree,
   ]);
 
   const graphData = useMemo(() => {
@@ -123,26 +132,64 @@ export function ForceCanvas3D() {
     fgRef.current?.d3ReheatSimulation();
   }, [relayoutNonce]);
 
+  const lastRevealNonce = useRef(0);
   useEffect(() => {
-    if (revealNonce === 0 || !selectedNodeId) return;
-    const node = graphData.nodes.find((n) => n.id === selectedNodeId);
-    if (!node || !fgRef.current) return;
+    if (revealNonce === lastRevealNonce.current) return;
+    lastRevealNonce.current = revealNonce;
+    if (revealNonce === 0 || !fgRef.current) return;
+    const xyz = (n: ForceNode) => ({
+      x: typeof n.x === 'number' ? n.x : 0,
+      y: typeof n.y === 'number' ? n.y : 0,
+      z: typeof n.z === 'number' ? n.z : 0,
+    });
+    let lookAt: { x: number; y: number; z: number } | null = null;
+    if (selectedNodeId) {
+      const node = graphData.nodes.find((n) => n.id === selectedNodeId);
+      if (node) lookAt = xyz(node);
+    } else if (selectedEdgeId && filteredGraph) {
+      const edge = filteredGraph.edges.find((e) => e.id === selectedEdgeId);
+      if (edge) {
+        const s = graphData.nodes.find((n) => n.id === edge.source);
+        const t = graphData.nodes.find((n) => n.id === edge.target);
+        if (s && t) {
+          const sp = xyz(s);
+          const tp = xyz(t);
+          lookAt = {
+            x: (sp.x + tp.x) / 2,
+            y: (sp.y + tp.y) / 2,
+            z: (sp.z + tp.z) / 2,
+          };
+        }
+      }
+    }
+    if (!lookAt) return;
     const distance = 120;
-    const x = typeof node.x === 'number' ? node.x : 0;
-    const y = typeof node.y === 'number' ? node.y : 0;
-    const z = typeof node.z === 'number' ? node.z : 0;
-    const dist = Math.hypot(x, y, z) || 1;
+    const dist = Math.hypot(lookAt.x, lookAt.y, lookAt.z) || 1;
     fgRef.current.cameraPosition(
-      { x: x * (1 + distance / dist), y: y * (1 + distance / dist), z: z * (1 + distance / dist) },
-      { x, y, z },
+      {
+        x: lookAt.x * (1 + distance / dist),
+        y: lookAt.y * (1 + distance / dist),
+        z: lookAt.z * (1 + distance / dist),
+      },
+      lookAt,
       800,
     );
-  }, [revealNonce, selectedNodeId, graphData.nodes]);
+  }, [revealNonce, selectedNodeId, selectedEdgeId, graphData.nodes, filteredGraph]);
 
   const nodeSize = (deg: number): number => {
     if (!sizeByDegree) return 6;
     return Math.max(4, Math.min(24, 4 + Math.sqrt(deg) * 2.5));
   };
+
+  const isLinkedToSelected = (l: ForceLink): boolean => {
+    if (!selectedNodeId) return false;
+    const sId = typeof l.source === 'object' ? (l.source as ForceNode).id : (l.source as string);
+    const tId = typeof l.target === 'object' ? (l.target as ForceNode).id : (l.target as string);
+    return sId === selectedNodeId || tId === selectedNodeId;
+  };
+
+  // Particles cost CPU per-frame; gate by edge count so big graphs stay smooth.
+  const particleCount = graphData.links.length < 800 ? 2 : 0;
 
   if (!selectedGraphId) {
     return (
@@ -173,14 +220,22 @@ export function ForceCanvas3D() {
         width={size.w}
         height={size.h}
         graphData={graphData}
-        backgroundColor="#0f172a"
-        nodeColor={(n) => n.color}
+        backgroundColor="#0F172A"
+        nodeColor={(n) => (n.id === selectedNodeId ? '#BFDBFE' : n.color)}
         nodeVal={(n) => nodeSize(n.degree)}
+        nodeOpacity={0.92}
+        nodeResolution={16}
         nodeLabel={(n) => n.label}
-        linkColor={() => 'rgba(148, 163, 184, 0.4)'}
-        linkOpacity={0.6}
+        linkColor={(l) => (isLinkedToSelected(l) ? '#93C5FD' : 'rgba(148, 163, 184, 0.55)')}
+        linkOpacity={0.75}
+        linkWidth={(l) => (isLinkedToSelected(l) ? 1.4 : 0.6)}
         linkDirectionalArrowLength={4}
         linkDirectionalArrowRelPos={0.95}
+        linkDirectionalArrowColor={(l) => (isLinkedToSelected(l) ? '#BFDBFE' : '#94A3B8')}
+        linkDirectionalParticles={(l) => (isLinkedToSelected(l) ? 4 : particleCount)}
+        linkDirectionalParticleWidth={(l) => (isLinkedToSelected(l) ? 2.4 : 1.4)}
+        linkDirectionalParticleSpeed={0.005}
+        linkDirectionalParticleColor={(l) => (isLinkedToSelected(l) ? '#BFDBFE' : '#94A3B8')}
         linkLabel={(l) => l.label}
         enableNodeDrag
         onNodeClick={(node) => {

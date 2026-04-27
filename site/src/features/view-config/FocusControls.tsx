@@ -1,4 +1,4 @@
-import { Button, Group, Slider, Stack } from '@mantine/core';
+import { Button, Slider } from '@mantine/core';
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
 import {
   clearFocus,
@@ -28,14 +28,14 @@ export function FocusControls() {
     : null;
 
   return (
-    <Stack gap={8}>
+    <div className="flex flex-col gap-2">
       {focusId ? (
-        <Stack gap={4}>
-          <div className="text-xs text-neutral-600 truncate" title={focusId}>
+        <div className="flex flex-col gap-1">
+          <div className="truncate text-xs text-neutral-600" title={focusId}>
             <span className="text-neutral-400">Focused: </span>
             <span className="font-medium">{focusDisplay ?? focusId}</span>
           </div>
-          <Group gap={4} wrap="nowrap">
+          <div className="flex flex-nowrap items-center gap-1">
             <Button
               size="compact-xs"
               variant="default"
@@ -53,8 +53,8 @@ export function FocusControls() {
             >
               Clear
             </Button>
-          </Group>
-        </Stack>
+          </div>
+        </div>
       ) : (
         <Button
           size="compact-xs"
@@ -68,7 +68,7 @@ export function FocusControls() {
         </Button>
       )}
 
-      <Stack gap={2}>
+      <div className="flex flex-col gap-0.5">
         <div className="text-xs text-neutral-500">
           Depth <span className="tabular-nums">{depth}</span>
         </div>
@@ -90,10 +90,10 @@ export function FocusControls() {
             { value: 6 },
           ]}
         />
-      </Stack>
-      <p className="text-[11px] text-neutral-400">
+      </div>
+      <p className="text-xs text-neutral-400">
         Double-click a node on the canvas to reveal its neighbors.
       </p>
-    </Stack>
+    </div>
   );
 }

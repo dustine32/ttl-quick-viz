@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { createSelector } from '@reduxjs/toolkit';
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
 import { setRenderer, setSelectedGraphId } from '@/features/graph';
 import {
@@ -13,11 +14,18 @@ import {
 import type { RootState } from '@/app/store';
 import { fromStore, parse, serialize } from '@/features/url-state/urlState';
 
+const selectUrlHash = createSelector(
+  (s: RootState) => s.graph,
+  (s: RootState) => s.viewConfig,
+  (graph, viewConfig) =>
+    serialize(fromStore({ graph, viewConfig } as RootState)),
+);
+
 export function useUrlSync() {
   const dispatch = useAppDispatch();
   const hydratedRef = useRef(false);
 
-  const state = useAppSelector((s) => s);
+  const serialized = useAppSelector(selectUrlHash);
 
   useEffect(() => {
     if (hydratedRef.current) return;
@@ -39,9 +47,13 @@ export function useUrlSync() {
 
   useEffect(() => {
     if (!hydratedRef.current) return;
-    const hash = `#${serialize(fromStore(state as RootState))}`;
+    const hash = `#${serialized}`;
     if (hash !== window.location.hash) {
-      window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}${hash}`);
+      window.history.replaceState(
+        null,
+        '',
+        `${window.location.pathname}${window.location.search}${hash}`,
+      );
     }
-  }, [state]);
+  }, [serialized]);
 }

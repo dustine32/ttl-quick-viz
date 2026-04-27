@@ -8,6 +8,7 @@ import {
   requestFitView,
   requestRelayout,
   togglePalette,
+  toggleBottomPanel,
   toggleLeftPanel,
   toggleRightPanel,
 } from '@/features/ui';
@@ -45,6 +46,7 @@ export function useAppHotkeys() {
   useHotkeys([
     ['mod+B', () => dispatch(toggleLeftPanel())],
     ['mod+alt+B', () => dispatch(toggleRightPanel())],
+    ['mod+J', () => dispatch(toggleBottomPanel())],
     ['mod+K', () => dispatch(togglePalette())],
     ['F', () => dispatch(requestFitView())],
     ['R', () => dispatch(requestRelayout())],

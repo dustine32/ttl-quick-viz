@@ -1,4 +1,8 @@
-export type { LabelMode, ViewConfigState } from '@/features/view-config/viewConfigSlice';
+export type {
+  LabelMode,
+  StandaloneMode,
+  ViewConfigState,
+} from '@/features/view-config/viewConfigSlice';
 export {
   viewConfigSlice,
   viewConfigReducer,
@@ -14,7 +18,18 @@ export {
   revealNode,
   togglePinned,
   setSizeByDegree,
+  setStandaloneMode,
+  setMinDegree,
+  setSwimlaneMaxLanes,
+  setSwimlaneGroupBy,
+  setSwimlaneSubGroupBy,
+  setSwimlaneHideOther,
   resetView,
+  STANDALONE_MODE_STORAGE_KEY,
+} from '@/features/view-config/viewConfigSlice';
+export type {
+  SwimlaneGroupBy,
+  SwimlaneSubGroupBy,
 } from '@/features/view-config/viewConfigSlice';
 export {
   selectViewConfig,
@@ -26,8 +41,14 @@ export {
   selectRevealedNodeIds,
   selectPinnedNodeIds,
   selectSizeByDegree,
+  selectStandaloneMode,
+  selectMinDegree,
   selectLayoutAlgoXyflow,
   selectLayoutAlgoCytoscape,
+  selectSwimlaneMaxLanes,
+  selectSwimlaneGroupBy,
+  selectSwimlaneSubGroupBy,
+  selectSwimlaneHideOther,
 } from '@/features/view-config/selectors';
 export { ViewPanel } from '@/features/view-config/ViewPanel';
 export { useGraphDerivedData } from '@/features/view-config/useGraphDerivedData';
@@ -53,3 +74,4 @@ export {
 export type { PrefixRegistry } from '@/features/view-config/prefixes';
 export { LabelModeToggle } from '@/features/view-config/LabelModeToggle';
 export { LayoutPicker } from '@/features/view-config/LayoutPicker';
+export { SwimlaneControls } from '@/features/view-config/SwimlaneControls';

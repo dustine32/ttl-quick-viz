@@ -1,1 +1,1 @@
-export { CommandPalette } from '@/features/search/CommandPalette';
+export { SearchBox } from '@/features/search/SearchBox';

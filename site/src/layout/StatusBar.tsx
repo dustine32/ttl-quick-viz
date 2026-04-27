@@ -1,4 +1,3 @@
-import { Group } from '@mantine/core';
 import { useAppSelector } from '@/app/hooks';
 import { useGetGraphQuery } from '@/features/graph';
 
@@ -12,15 +11,23 @@ export function StatusBar() {
   const edgeCount = data?.edges.length ?? 0;
 
   return (
-    <Group h="100%" px="sm" gap="md" justify="space-between" wrap="nowrap">
-      <Group gap="md" wrap="nowrap">
-        <span className="text-xs text-neutral-500">
-          {selectedGraphId ? `Graph: ${selectedGraphId}` : 'No graph selected'}
+    <div className="flex h-full flex-nowrap items-center justify-between gap-5 px-4">
+      <div className="flex flex-nowrap items-center gap-4">
+        <span className="flex items-center gap-1.5 text-xs text-slate-500">
+          <span
+            className={`inline-block h-1.5 w-1.5 rounded-full ${selectedGraphId ? 'bg-green-500' : 'bg-gray-500'
+              }`}
+          />
+          {selectedGraphId ? selectedGraphId : 'No graph selected'}
         </span>
-        <span className="text-xs text-neutral-500">
-          {nodeCount} nodes · {edgeCount} edges
+        <span className="text-xs tabular-nums text-slate-500">
+          <span className="text-gray-900">{nodeCount}</span> nodes ·{' '}
+          <span className="text-gray-900">{edgeCount}</span> edges
         </span>
-      </Group>
-    </Group>
+      </div>
+      <span className="text-xs text-gray-400">
+        Ctrl+K · Ctrl+J · F · R · Ctrl+B
+      </span>
+    </div>
   );
 }

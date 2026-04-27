@@ -17,6 +17,13 @@ def graphs_dir(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
+def input_dir(tmp_path: Path) -> Path:
+    d = tmp_path / "input"
+    d.mkdir()
+    return d
+
+
+@pytest.fixture
 def write_graph(graphs_dir: Path) -> Callable[[str, Any], None]:
     def _write(name: str, payload: Any) -> None:
         path = graphs_dir / f"{name}.json"
@@ -28,8 +35,21 @@ def write_graph(graphs_dir: Path) -> Callable[[str, Any], None]:
 
 
 @pytest.fixture
-def settings(graphs_dir: Path) -> Settings:
-    return Settings(graphs_dir=graphs_dir)
+def write_ttl(input_dir: Path) -> Callable[[str, str], None]:
+    def _write(name: str, content: str) -> None:
+        (input_dir / f"{name}.ttl").write_text(content, encoding="utf-8")
+    return _write
+
+
+@pytest.fixture
+def settings(graphs_dir: Path, input_dir: Path) -> Settings:
+    return Settings(
+        graphs_dir=graphs_dir,
+        input_dir=input_dir,
+        host="127.0.0.1",
+        port=8000,
+        log_level="INFO",
+    )
 
 
 @pytest.fixture

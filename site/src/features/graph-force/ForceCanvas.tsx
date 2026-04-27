@@ -17,8 +17,10 @@ import {
   selectHiddenPredicates,
   selectHiddenTypes,
   selectLabelMode,
+  selectMinDegree,
   selectRevealedNodeIds,
   selectSizeByDegree,
+  selectStandaloneMode,
   UNTYPED_NODE_COLOR,
   useGraphDerivedData,
 } from '@/features/view-config';
@@ -51,10 +53,13 @@ export function ForceCanvas() {
   const focusDepth = useAppSelector(selectFocusDepth);
   const revealedNodeIds = useAppSelector(selectRevealedNodeIds);
   const sizeByDegree = useAppSelector(selectSizeByDegree);
+  const standaloneMode = useAppSelector(selectStandaloneMode);
+  const minDegree = useAppSelector(selectMinDegree);
   const fitViewNonce = useAppSelector((s) => s.ui.fitViewNonce);
   const revealNonce = useAppSelector((s) => s.ui.revealNonce);
   const relayoutNonce = useAppSelector((s) => s.ui.relayoutNonce);
   const selectedNodeId = useAppSelector((s) => s.ui.selectedNodeId);
+  const selectedEdgeId = useAppSelector((s) => s.ui.selectedEdgeId);
 
   const { data, isLoading, error } = useGetGraphQuery(selectedGraphId, {
     skip: !selectedGraphId,
@@ -71,6 +76,8 @@ export function ForceCanvas() {
       focusNodeId,
       focusDepth,
       revealedNodeIds,
+      standaloneMode,
+      minDegree,
     });
   }, [
     data,
@@ -80,6 +87,8 @@ export function ForceCanvas() {
     focusNodeId,
     focusDepth,
     revealedNodeIds,
+    standaloneMode,
+    minDegree,
   ]);
 
   const graphData: ForceData = useMemo(() => {
@@ -126,20 +135,42 @@ export function ForceCanvas() {
     fgRef.current?.d3ReheatSimulation();
   }, [relayoutNonce]);
 
+  const lastRevealNonce = useRef(0);
   useEffect(() => {
-    if (revealNonce === 0 || !selectedNodeId) return;
-    const node = graphData.nodes.find((n) => n.id === selectedNodeId);
-    if (!node) return;
-    const x = typeof node.x === 'number' ? node.x : 0;
-    const y = typeof node.y === 'number' ? node.y : 0;
-    fgRef.current?.centerAt(x, y, 400);
-    fgRef.current?.zoom(4, 400);
-  }, [revealNonce, selectedNodeId, graphData.nodes]);
+    if (revealNonce === lastRevealNonce.current) return;
+    lastRevealNonce.current = revealNonce;
+    if (revealNonce === 0) return;
+    const xy = (n: ForceNode) => ({
+      x: typeof n.x === 'number' ? n.x : 0,
+      y: typeof n.y === 'number' ? n.y : 0,
+    });
+    if (selectedNodeId) {
+      const node = graphData.nodes.find((n) => n.id === selectedNodeId);
+      if (!node) return;
+      const p = xy(node);
+      fgRef.current?.centerAt(p.x, p.y, 400);
+      fgRef.current?.zoom(4, 400);
+    } else if (selectedEdgeId && filteredGraph) {
+      const edge = filteredGraph.edges.find((e) => e.id === selectedEdgeId);
+      if (!edge) return;
+      const s = graphData.nodes.find((n) => n.id === edge.source);
+      const t = graphData.nodes.find((n) => n.id === edge.target);
+      if (!s || !t) return;
+      const sp = xy(s);
+      const tp = xy(t);
+      fgRef.current?.centerAt((sp.x + tp.x) / 2, (sp.y + tp.y) / 2, 400);
+      fgRef.current?.zoom(4, 400);
+    }
+  }, [revealNonce, selectedNodeId, selectedEdgeId, graphData.nodes, filteredGraph]);
 
   const baseRadius = (deg: number): number => {
     if (!sizeByDegree) return 6;
     return Math.max(4, Math.min(24, 4 + Math.sqrt(deg) * 2.5));
   };
+
+  // Particles are pretty but eat CPU on big graphs; gate by edge count.
+  const particleCount = graphData.links.length < 800 ? 2 : 0;
+  const linkCurvature = graphData.links.length < 1500 ? 0.12 : 0;
 
   if (!selectedGraphId) {
     return (
@@ -163,30 +194,35 @@ export function ForceCanvas() {
     );
   }
 
+  const isLinkedToSelected = (l: ForceLink): boolean => {
+    if (!selectedNodeId) return false;
+    const sId = typeof l.source === 'object' ? (l.source as ForceNode).id : (l.source as string);
+    const tId = typeof l.target === 'object' ? (l.target as ForceNode).id : (l.target as string);
+    return sId === selectedNodeId || tId === selectedNodeId;
+  };
+
   return (
-    <div ref={containerRef} className="relative h-full w-full bg-white">
+    <div ref={containerRef} className="relative h-full w-full bg-[#0F172A]">
       <ForceGraph2D<ForceNode, ForceLink>
         ref={fgRef}
         width={size.w}
         height={size.h}
         graphData={graphData}
-        backgroundColor="#ffffff"
-        cooldownTicks={120}
-        warmupTicks={40}
-        d3AlphaDecay={0.025}
-        d3VelocityDecay={0.35}
-        linkColor={(l) => (selectedNodeId && (l.source === selectedNodeId || l.target === selectedNodeId ||
-          (typeof l.source === 'object' && (l.source as ForceNode).id === selectedNodeId) ||
-          (typeof l.target === 'object' && (l.target as ForceNode).id === selectedNodeId))
-          ? '#60a5fa'
-          : '#cbd5e1')}
-        linkWidth={(l) => (selectedNodeId && (
-          (typeof l.source === 'object' && (l.source as ForceNode).id === selectedNodeId) ||
-          (typeof l.target === 'object' && (l.target as ForceNode).id === selectedNodeId)
-        ) ? 2 : 1)}
+        backgroundColor="#0F172A"
+        cooldownTicks={140}
+        warmupTicks={60}
+        d3AlphaDecay={0.022}
+        d3VelocityDecay={0.32}
+        linkColor={(l) => (isLinkedToSelected(l) ? 'rgba(96, 165, 250, 0.95)' : 'rgba(148, 163, 184, 0.45)')}
+        linkWidth={(l) => (isLinkedToSelected(l) ? 2.2 : 1.2)}
+        linkCurvature={linkCurvature}
         linkDirectionalArrowLength={5}
         linkDirectionalArrowRelPos={0.95}
-        linkDirectionalArrowColor={() => '#94a3b8'}
+        linkDirectionalArrowColor={(l) => (isLinkedToSelected(l) ? '#93C5FD' : '#94A3B8')}
+        linkDirectionalParticles={(l) => (isLinkedToSelected(l) ? 4 : particleCount)}
+        linkDirectionalParticleWidth={(l) => (isLinkedToSelected(l) ? 2.6 : 1.6)}
+        linkDirectionalParticleSpeed={0.005}
+        linkDirectionalParticleColor={(l) => (isLinkedToSelected(l) ? '#BFDBFE' : '#94A3B8')}
         linkLabel={(l) => l.label}
         enableNodeDrag
         nodeLabel={(n) => n.label}
@@ -196,32 +232,45 @@ export function ForceCanvas() {
           const r = baseRadius(node.degree);
           const x = node.x ?? 0;
           const y = node.y ?? 0;
+          const fill = node.color ?? UNTYPED_NODE_COLOR;
 
           const isSelected = node.id === selectedNodeId;
-          if (isSelected) {
-            ctx.beginPath();
-            ctx.arc(x, y, r + 3, 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(96, 165, 250, 0.35)';
-            ctx.fill();
-          }
+          // Outer glow — soft halo for everything, brighter when selected.
+          const glowR = r + (isSelected ? 9 : 5);
+          const glow = ctx.createRadialGradient(x, y, r * 0.6, x, y, glowR);
+          glow.addColorStop(0, isSelected ? 'rgba(147, 197, 253, 0.55)' : 'rgba(148, 163, 184, 0.18)');
+          glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+          ctx.beginPath();
+          ctx.arc(x, y, glowR, 0, Math.PI * 2);
+          ctx.fillStyle = glow;
+          ctx.fill();
 
+          // Body — radial gradient for a slight 3D feel.
+          const body = ctx.createRadialGradient(x - r * 0.35, y - r * 0.35, r * 0.1, x, y, r);
+          body.addColorStop(0, '#FFFFFF');
+          body.addColorStop(0.25, fill);
+          body.addColorStop(1, fill);
           ctx.beginPath();
           ctx.arc(x, y, r, 0, Math.PI * 2);
-          ctx.fillStyle = node.color ?? UNTYPED_NODE_COLOR;
+          ctx.fillStyle = body;
           ctx.fill();
-          ctx.lineWidth = 1.5 / globalScale;
-          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 1.2 / globalScale;
+          ctx.strokeStyle = isSelected ? '#BFDBFE' : 'rgba(15, 23, 42, 0.7)';
           ctx.stroke();
 
           if (globalScale > 1.2) {
             const fontSize = Math.max(10, 12 / globalScale);
             ctx.font = `500 ${fontSize}px system-ui, sans-serif`;
-            ctx.fillStyle = '#0f172a';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'top';
             const maxChars = 40;
             const text =
               node.label.length > maxChars ? `${node.label.slice(0, maxChars)}…` : node.label;
+            // Halo for legibility on dark bg.
+            ctx.lineWidth = 3 / globalScale;
+            ctx.strokeStyle = 'rgba(15, 23, 42, 0.95)';
+            ctx.strokeText(text, x, y + r + 3);
+            ctx.fillStyle = '#E2E8F0';
             ctx.fillText(text, x, y + r + 3);
           }
         }}

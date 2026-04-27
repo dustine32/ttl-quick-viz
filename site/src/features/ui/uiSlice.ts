@@ -6,6 +6,7 @@ export type UiState = {
   leftPanelOpen: boolean;
   rightPanelOpen: boolean;
   rightPanelTab: RightPanelTab;
+  bottomPanelOpen: boolean;
   selectedNodeId: string | null;
   selectedEdgeId: string | null;
   fitViewNonce: number;
@@ -18,6 +19,7 @@ const initialState: UiState = {
   leftPanelOpen: true,
   rightPanelOpen: true,
   rightPanelTab: 'properties',
+  bottomPanelOpen: false,
   selectedNodeId: null,
   selectedEdgeId: null,
   fitViewNonce: 0,
@@ -44,6 +46,12 @@ export const uiSlice = createSlice({
     },
     setRightPanelTab(state, action: PayloadAction<RightPanelTab>) {
       state.rightPanelTab = action.payload;
+    },
+    toggleBottomPanel(state) {
+      state.bottomPanelOpen = !state.bottomPanelOpen;
+    },
+    setBottomPanelOpen(state, action: PayloadAction<boolean>) {
+      state.bottomPanelOpen = action.payload;
     },
     selectNode(state, action: PayloadAction<string | null>) {
       state.selectedNodeId = action.payload;
@@ -81,6 +89,8 @@ export const {
   toggleRightPanel,
   setRightPanelOpen,
   setRightPanelTab,
+  toggleBottomPanel,
+  setBottomPanelOpen,
   selectNode,
   selectEdge,
   clearSelection,

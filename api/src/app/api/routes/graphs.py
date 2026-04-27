@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import Response
 
 from app.api.deps import get_conversion_service, get_service
 from app.domain.models import ConvertResponse, Graph, GraphConversionResult, GraphSummary
@@ -18,6 +19,15 @@ def list_graphs(service: GraphService = Depends(get_service)) -> list[GraphSumma
 @router.get("/graphs/{graph_id}", response_model=Graph)
 def get_graph(graph_id: str, service: GraphService = Depends(get_service)) -> Graph:
     return service.get_graph(graph_id)
+
+
+@router.get("/graphs/{graph_id}/ttl", response_class=Response)
+def get_graph_ttl(
+    graph_id: str,
+    conversion: ConversionService = Depends(get_conversion_service),
+) -> Response:
+    ttl = conversion.get_ttl(graph_id)
+    return Response(content=ttl, media_type="text/turtle; charset=utf-8")
 
 
 @router.post("/convert", response_model=ConvertResponse)

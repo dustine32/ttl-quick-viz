@@ -21,7 +21,10 @@ React 19 + Vite + TypeScript SPA that fetches TTL-derived graph JSON from the si
 - `features/url-state/` — `useUrlSync` reads/writes state to the URL.
 - `shared/components/` — cross-feature components (e.g. `ErrorBoundary`).
 - `data/sample-graph.json` — local fallback sample.
-- `test/setup.ts` — Vitest + jsdom setup.
+
+Tests live **outside `src/`** in `site/tests/`, mirroring the `src/` tree
+(e.g. `tests/features/graph/graphSlice.test.ts` for `src/features/graph/graphSlice.ts`).
+`tests/setup.ts` is the Vitest + jsdom setup file.
 
 Path alias: `@/*` → `src/*` (configured in `tsconfig.app.json` and `vite.config.ts`).
 
@@ -35,8 +38,8 @@ Path alias: `@/*` → `src/*` (configured in `tsconfig.app.json` and `vite.confi
 
 ## Data flow
 
-1. UI component calls an RTK Query hook (`useGetGraphsQuery`, `useGetGraphQuery`) from `src/features/graph/graphApi.ts` (`baseUrl: '/api'`).
-2. Vite dev server proxies `/api/*` to `http://localhost:8000` (see `vite.config.ts`).
+1. UI component calls an RTK Query hook (`useGetGraphsQuery`, `useGetGraphQuery`) from `src/features/graph/graphApi.ts`. `baseUrl` reads `import.meta.env.VITE_API_URL` (e.g. `http://localhost:8000/api`).
+2. The browser hits `api/` directly — no Vite proxy. The api must allow the dev origin via its `CORS_ALLOW_ORIGINS` setting.
 3. FastAPI (`api/`) returns JSON matching the `Graph` wire shape.
 4. Renderer consumes nodes/edges; layout (ELK or Cytoscape's built-ins) positions them.
 
@@ -90,11 +93,12 @@ Run from `site/`:
 - `npm run lint` — ESLint flat config (`eslint.config.js`).
 - `npm test` / `npm run test:watch` — Vitest (jsdom, Testing Library).
 
-## Vite dev proxy
+## API base URL (no proxy)
 
-- `vite.config.ts` proxies `/api` → `http://localhost:8000`.
-- If `api/` isn't running, every RTK Query request 502s — the UI renders but graph lists/bodies stay empty and the fetch errors surface in the console/inspector.
-- If `api/` binds a different port, update the proxy target here (keep it in sync).
+- `vite.config.ts` does **not** define a dev proxy. The browser hits the api directly.
+- `src/features/graph/graphApi.ts` sets `baseUrl: import.meta.env.VITE_API_URL`. Configure it in `site/.env` (`.env.example` is the template). Default for local dev: `http://localhost:8000/api`.
+- The api must include the site origin in `CORS_ALLOW_ORIGINS` (see `api/.env.example`). Defaults cover `:5173` and `:4242` on `localhost` and `127.0.0.1`.
+- If `api/` isn't running or CORS is misconfigured, RTK Query requests fail (network error or CORS rejection) — the UI renders but graph lists/bodies stay empty and the error surfaces in the console.
 
 ## Gotchas
 
@@ -110,4 +114,4 @@ Run from `site/`:
 3. Register a hotkey in `src/layout/useAppHotkeys.ts`.
 4. In each renderer that should respond, subscribe to the nonce with `useAppSelector` and run the side-effect in a `useEffect` keyed on the nonce value.
 5. If it needs persisted view state instead of a one-shot, put it in `features/view-config/viewConfigSlice.ts` and read via selectors in `features/view-config/selectors.ts`.
-6. Add a Vitest test next to the slice (`*.test.ts`) and/or the component (`*.test.tsx`).
+6. Add a Vitest test under `site/tests/` mirroring the source path (e.g. `tests/features/ui/uiSlice.test.ts` for the slice, `tests/layout/Toolbar.test.tsx` for the toolbar).

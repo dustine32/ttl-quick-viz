@@ -1,4 +1,3 @@
-import { ScrollArea, Stack } from '@mantine/core';
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
 import { useGetGraphQuery } from '@/features/graph';
 import { formatIri } from '@/features/view-config/prefixes';
@@ -19,39 +18,37 @@ export function TypeLegend() {
 
   if (types.length === 0) {
     return (
-      <p className="text-xs text-neutral-400 italic">
+      <p className="text-xs italic text-neutral-400">
         No rdf:type information in this graph.
       </p>
     );
   }
 
   return (
-    <ScrollArea.Autosize mah={240} type="auto">
-      <Stack gap={2}>
-        {types.map(({ type, count, color }) => {
-          const isHidden = hidden.has(type);
-          return (
-            <button
-              key={type}
-              type="button"
-              onClick={() => dispatch(toggleTypeHidden(type))}
-              className={`flex items-center justify-between gap-2 w-full rounded px-1.5 py-0.5 text-left text-xs hover:bg-neutral-100 ${
-                isHidden ? 'opacity-40' : ''
-              }`}
-              title={type}
-            >
-              <span className="flex items-center gap-2 min-w-0">
-                <span
-                  className="inline-block h-2.5 w-2.5 rounded-sm shrink-0"
-                  style={{ backgroundColor: color }}
-                />
-                <span className="truncate">{formatIri(type, labelMode)}</span>
-              </span>
-              <span className="text-neutral-400 tabular-nums">{count}</span>
-            </button>
-          );
-        })}
-      </Stack>
-    </ScrollArea.Autosize>
+    <div className="flex max-h-60 flex-col gap-0.5 overflow-auto">
+      {types.map(({ type, count, color }) => {
+        const isHidden = hidden.has(type);
+        return (
+          <button
+            key={type}
+            type="button"
+            onClick={() => dispatch(toggleTypeHidden(type))}
+            className={`flex w-full items-center justify-between gap-2 rounded px-1.5 py-0.5 text-left text-xs hover:bg-neutral-100 ${
+              isHidden ? 'opacity-40' : ''
+            }`}
+            title={type}
+          >
+            <span className="flex min-w-0 items-center gap-2">
+              <span
+                className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm"
+                style={{ backgroundColor: color }}
+              />
+              <span className="truncate">{formatIri(type, labelMode)}</span>
+            </span>
+            <span className="tabular-nums text-neutral-400">{count}</span>
+          </button>
+        );
+      })}
+    </div>
   );
 }

@@ -13,8 +13,10 @@ import {
   selectHiddenPredicates,
   selectHiddenTypes,
   selectLabelMode,
+  selectMinDegree,
   selectRevealedNodeIds,
   selectSizeByDegree,
+  selectStandaloneMode,
   useGraphDerivedData,
 } from '@/features/view-config';
 import { revealNode } from '@/features/view-config/viewConfigSlice';
@@ -31,10 +33,13 @@ export function GraphinCanvas() {
   const focusDepth = useAppSelector(selectFocusDepth);
   const revealedNodeIds = useAppSelector(selectRevealedNodeIds);
   const sizeByDegree = useAppSelector(selectSizeByDegree);
+  const standaloneMode = useAppSelector(selectStandaloneMode);
+  const minDegree = useAppSelector(selectMinDegree);
   const fitViewNonce = useAppSelector((s) => s.ui.fitViewNonce);
   const relayoutNonce = useAppSelector((s) => s.ui.relayoutNonce);
   const revealNonce = useAppSelector((s) => s.ui.revealNonce);
   const selectedNodeId = useAppSelector((s) => s.ui.selectedNodeId);
+  const selectedEdgeId = useAppSelector((s) => s.ui.selectedEdgeId);
 
   const { data, isLoading, error } = useGetGraphQuery(selectedGraphId, {
     skip: !selectedGraphId,
@@ -51,6 +56,8 @@ export function GraphinCanvas() {
       focusNodeId,
       focusDepth,
       revealedNodeIds,
+      standaloneMode,
+      minDegree,
     });
   }, [
     data,
@@ -60,6 +67,8 @@ export function GraphinCanvas() {
     focusNodeId,
     focusDepth,
     revealedNodeIds,
+    standaloneMode,
+    minDegree,
   ]);
 
   const options = useMemo<GraphOptions | undefined>(() => {
@@ -150,22 +159,45 @@ export function GraphinCanvas() {
   const graphRef = useRef<G6Graph | null>(null);
   const lastClickRef = useRef<{ id: string; at: number } | null>(null);
 
+  // Run an imperative call on the live graph, no-op if destroyed or unmounted.
+  // G6 throws synchronously on destroyed instances; the catch silences async
+  // layout/draw races on instances Graphin tore down underneath us.
+  const safeCall = (fn: (g: G6Graph) => void) => {
+    const g = graphRef.current;
+    if (!g || g.destroyed) return;
+    try {
+      fn(g);
+    } catch {
+      /* graph was destroyed mid-operation — ignore */
+    }
+  };
+
   useEffect(() => {
     if (fitViewNonce === 0) return;
-    graphRef.current?.fitView();
+    safeCall((g) => g.fitView());
   }, [fitViewNonce]);
 
   useEffect(() => {
     if (relayoutNonce === 0) return;
-    graphRef.current?.layout();
+    safeCall((g) => {
+      const p = g.layout();
+      if (p && typeof (p as Promise<unknown>).catch === 'function') {
+        (p as Promise<unknown>).catch(() => { /* destroyed mid-layout */ });
+      }
+    });
   }, [relayoutNonce]);
 
+  const lastRevealNonce = useRef(0);
   useEffect(() => {
-    if (revealNonce === 0 || !selectedNodeId) return;
-    graphRef.current?.focusElement(selectedNodeId);
-  }, [revealNonce, selectedNodeId]);
+    if (revealNonce === lastRevealNonce.current) return;
+    lastRevealNonce.current = revealNonce;
+    if (revealNonce === 0) return;
+    const targetId = selectedNodeId ?? selectedEdgeId;
+    if (!targetId) return;
+    safeCall((g) => g.focusElement(targetId));
+  }, [revealNonce, selectedNodeId, selectedEdgeId]);
 
-  const attachEvents = (g: G6Graph) => {
+  const onReady = (g: G6Graph) => {
     graphRef.current = g;
     g.on('node:click', ((ev: unknown) => {
       const id = (ev as { target?: { id?: string } })?.target?.id;
@@ -181,6 +213,11 @@ export function GraphinCanvas() {
       dispatch(selectNode(id));
     }) as never);
     g.on('canvas:click', () => dispatch(clearSelection()));
+  };
+
+  const onDestroy = () => {
+    graphRef.current = null;
+    lastClickRef.current = null;
   };
 
   if (!selectedGraphId) {
@@ -210,9 +247,14 @@ export function GraphinCanvas() {
 
   return (
     <Graphin
+      // Force a clean remount when the underlying graph changes — prevents
+      // the "draw of undefined" race where the previous instance's pending
+      // layout/render promises run after Graphin swapped its options.
+      key={selectedGraphId ?? 'none'}
       style={{ height: '100%', width: '100%', background: '#ffffff' }}
       options={options}
-      onReady={attachEvents}
+      onReady={onReady}
+      onDestroy={onDestroy}
     />
   );
 }

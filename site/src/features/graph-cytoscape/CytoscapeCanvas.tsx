@@ -14,8 +14,10 @@ import {
   selectHiddenTypes,
   selectLabelMode,
   selectLayoutAlgoCytoscape,
+  selectMinDegree,
   selectRevealedNodeIds,
   selectSizeByDegree,
+  selectStandaloneMode,
   useGraphDerivedData,
 } from '@/features/view-config';
 import { revealNode } from '@/features/view-config/viewConfigSlice';
@@ -37,8 +39,11 @@ export function CytoscapeCanvas() {
   const focusNodeId = useAppSelector(selectFocusNodeId);
   const focusDepth = useAppSelector(selectFocusDepth);
   const revealedNodeIds = useAppSelector(selectRevealedNodeIds);
+  const standaloneMode = useAppSelector(selectStandaloneMode);
+  const minDegree = useAppSelector(selectMinDegree);
   const revealNonce = useAppSelector((s) => s.ui.revealNonce);
   const selectedNodeId = useAppSelector((s) => s.ui.selectedNodeId);
+  const selectedEdgeId = useAppSelector((s) => s.ui.selectedEdgeId);
   const { data, isLoading, error } = useGetGraphQuery(selectedGraphId, {
     skip: !selectedGraphId,
   });
@@ -53,6 +58,8 @@ export function CytoscapeCanvas() {
       focusNodeId,
       focusDepth,
       revealedNodeIds,
+      standaloneMode,
+      minDegree,
     });
   }, [
     data,
@@ -62,6 +69,8 @@ export function CytoscapeCanvas() {
     focusNodeId,
     focusDepth,
     revealedNodeIds,
+    standaloneMode,
+    minDegree,
   ]);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const cyRef = useRef<Core | null>(null);
@@ -95,29 +104,37 @@ export function CytoscapeCanvas() {
         {
           selector: 'node',
           style: {
+            shape: 'ellipse',
             'background-color': `data(color)`,
+            'background-opacity': 0.9,
             label: 'data(label)',
-            color: '#0f172a',
+            color: '#0F1218',
             'text-valign': 'bottom',
             'text-halign': 'center',
-            'text-margin-y': 6,
+            'text-margin-y': 4,
             'font-size': 11,
             'font-family': 'system-ui, sans-serif',
-            'font-weight': 500,
-            'text-wrap': 'ellipsis',
-            'text-max-width': '160px',
-            width: sizeByDegree ? ('mapData(degree, 0, 30, 40, 140)' as never) : 52,
-            height: sizeByDegree ? ('mapData(degree, 0, 30, 40, 140)' as never) : 52,
+            'font-weight': 600,
+            'text-wrap': 'wrap',
+            'text-max-width': '180px',
+            'text-outline-color': '#FAFBFC',
+            'text-outline-width': 3,
+            width: sizeByDegree
+              ? ('mapData(degree, 0, 30, 28, 70)' as never)
+              : 38,
+            height: sizeByDegree
+              ? ('mapData(degree, 0, 30, 28, 70)' as never)
+              : 38,
             'border-width': 2,
-            'border-color': '#ffffff',
-            'border-opacity': 0.9,
+            'border-color': '#1B1F2A',
+            'border-opacity': 1,
             'overlay-padding': 6,
           },
         },
         {
           selector: 'node:selected',
           style: {
-            'border-color': '#60a5fa',
+            'border-color': '#4FB3FF',
             'border-width': 4,
             'border-opacity': 1,
           },
@@ -126,8 +143,8 @@ export function CytoscapeCanvas() {
           selector: 'edge',
           style: {
             width: 1.5,
-            'line-color': '#94a3b8',
-            'target-arrow-color': '#94a3b8',
+            'line-color': '#5B6478',
+            'target-arrow-color': '#5B6478',
             'target-arrow-shape': 'triangle',
             'arrow-scale': 0.9,
             'curve-style': 'bezier',
@@ -135,19 +152,20 @@ export function CytoscapeCanvas() {
             'font-size': 9,
             'font-family': 'system-ui, sans-serif',
             'text-rotation': 'autorotate',
-            'text-background-color': '#ffffff',
-            'text-background-opacity': 0.85,
-            'text-background-padding': '2',
+            'text-background-color': '#1B1F2A',
+            'text-background-opacity': 0.9,
+            'text-background-padding': '3',
+            'text-background-shape': 'roundrectangle',
             'text-max-width': '200px',
             'text-wrap': 'ellipsis',
-            color: '#64748b',
+            color: '#CBD5E1',
           },
         },
         {
           selector: 'edge:selected',
           style: {
-            'line-color': '#60a5fa',
-            'target-arrow-color': '#60a5fa',
+            'line-color': '#4FB3FF',
+            'target-arrow-color': '#4FB3FF',
             width: 2.5,
           },
         },
@@ -184,15 +202,20 @@ export function CytoscapeCanvas() {
     cyRef.current?.fit(undefined, 60);
   }, [fitViewNonce]);
 
+  const lastRevealNonce = useRef(0);
   useEffect(() => {
-    if (revealNonce === 0 || !selectedNodeId) return;
+    if (revealNonce === lastRevealNonce.current) return;
+    lastRevealNonce.current = revealNonce;
+    if (revealNonce === 0) return;
+    const targetId = selectedNodeId ?? selectedEdgeId;
+    if (!targetId) return;
     const cy = cyRef.current;
     if (!cy) return;
-    const ele = cy.getElementById(selectedNodeId);
+    const ele = cy.getElementById(targetId);
     if (ele.nonempty()) {
       cy.animate({ center: { eles: ele }, zoom: 1.2 }, { duration: 400 });
     }
-  }, [revealNonce, selectedNodeId]);
+  }, [revealNonce, selectedNodeId, selectedEdgeId]);
 
   useEffect(() => {
     if (relayoutNonce === 0) return;
@@ -201,7 +224,7 @@ export function CytoscapeCanvas() {
 
   if (!selectedGraphId) {
     return (
-      <div className="flex h-full items-center justify-center text-neutral-500">
+      <div className="flex h-full items-center justify-center text-neutral-400">
         Select a graph to view.
       </div>
     );
@@ -209,7 +232,7 @@ export function CytoscapeCanvas() {
 
   if (isLoading) {
     return (
-      <div className="flex h-full items-center justify-center text-neutral-500">
+      <div className="flex h-full items-center justify-center text-neutral-400">
         Loading…
       </div>
     );
@@ -223,5 +246,11 @@ export function CytoscapeCanvas() {
     );
   }
 
-  return <div ref={containerRef} className="h-full w-full bg-white" />;
+  return (
+    <div
+      ref={containerRef}
+      className="h-full w-full"
+      style={{ background: 'var(--color-canvas-bg)' }}
+    />
+  );
 }

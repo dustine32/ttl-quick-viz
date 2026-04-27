@@ -1,36 +1,42 @@
 import type { ReactNode } from 'react';
-import { Button, Stack } from '@mantine/core';
-import { useAppDispatch } from '@/app/hooks';
+import { Button } from '@mantine/core';
+import { useAppDispatch, useAppSelector } from '@/app/hooks';
 import { requestFitView, requestRelayout } from '@/features/ui';
-import { IconFitView, IconLayout } from '@/layout/icons';
+import { LuLayoutDashboard, LuMaximize } from 'react-icons/lu';
 import { PredicateFilter } from '@/features/view-config/PredicateFilter';
 import { TypeLegend } from '@/features/view-config/TypeLegend';
 import { LabelModeToggle } from '@/features/view-config/LabelModeToggle';
 import { FocusControls } from '@/features/view-config/FocusControls';
 import { StylingControls } from '@/features/view-config/StylingControls';
+import { FilterControls } from '@/features/view-config/FilterControls';
+import { SwimlaneControls } from '@/features/view-config/SwimlaneControls';
+import { selectLayoutAlgoXyflow } from '@/features/view-config/selectors';
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <Stack gap={6}>
-      <div className="text-xs font-semibold uppercase text-neutral-500 tracking-[0.4px]">
+    <div className="flex flex-col gap-1.5">
+      <div className="text-xs font-semibold uppercase tracking-[0.4px] text-neutral-500">
         {title}
       </div>
       {children}
-    </Stack>
+    </div>
   );
 }
 
 export function ViewPanel() {
   const dispatch = useAppDispatch();
+  const renderer = useAppSelector((s) => s.graph.renderer);
+  const xyflowAlgo = useAppSelector(selectLayoutAlgoXyflow);
+  const showSwimlane = renderer === 'xyflow' && xyflowAlgo === 'swimlane';
 
   return (
-    <Stack gap="md">
+    <div className="flex flex-col gap-4">
       <Section title="Camera">
         <Button
           variant="light"
           color="gray"
           size="xs"
-          leftSection={<IconFitView />}
+          leftSection={<LuMaximize />}
           onClick={() => dispatch(requestFitView())}
         >
           Fit view
@@ -42,11 +48,21 @@ export function ViewPanel() {
           variant="light"
           color="gray"
           size="xs"
-          leftSection={<IconLayout />}
+          leftSection={<LuLayoutDashboard />}
           onClick={() => dispatch(requestRelayout())}
         >
           Re-run layout
         </Button>
+      </Section>
+
+      {showSwimlane ? (
+        <Section title="Groups">
+          <SwimlaneControls />
+        </Section>
+      ) : null}
+
+      <Section title="Filter">
+        <FilterControls />
       </Section>
 
       <Section title="Predicates">
@@ -68,6 +84,6 @@ export function ViewPanel() {
       <Section title="Focus">
         <FocusControls />
       </Section>
-    </Stack>
+    </div>
   );
 }

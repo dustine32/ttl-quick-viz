@@ -16,3 +16,6 @@ Thumbs.db
 # === Claude / agent scratch ===
 .claude/
 .superpowers/
+
+node_modules
+

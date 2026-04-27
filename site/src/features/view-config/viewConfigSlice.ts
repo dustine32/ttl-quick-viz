@@ -3,6 +3,8 @@ import type { GraphRenderer } from '@/features/graph';
 
 export type LabelMode = 'prefixed' | 'full' | 'label';
 
+export type StandaloneMode = 'hide' | 'both' | 'only';
+
 export type ViewConfigState = {
   hiddenPredicates: string[];
   hiddenTypes: string[];
@@ -14,7 +16,28 @@ export type ViewConfigState = {
   revealedNodeIds: string[];
   pinnedNodeIds: string[];
   sizeByDegree: boolean;
+  standaloneMode: StandaloneMode;
+  minDegree: number;
+  swimlaneMaxLanes: number;
+  swimlaneGroupBy: SwimlaneGroupBy;
+  swimlaneSubGroupBy: SwimlaneSubGroupBy;
+  swimlaneHideOther: boolean;
 };
+
+export type SwimlaneGroupBy = 'component' | 'type';
+export type SwimlaneSubGroupBy = 'none' | 'type' | 'component';
+
+export const STANDALONE_MODE_STORAGE_KEY = 'ttl-quick-viz:standaloneMode';
+
+function loadStandaloneMode(): StandaloneMode {
+  try {
+    const raw = window.localStorage.getItem(STANDALONE_MODE_STORAGE_KEY);
+    if (raw === 'hide' || raw === 'both' || raw === 'only') return raw;
+  } catch {
+    /* localStorage unavailable (SSR, privacy mode) — fall through */
+  }
+  return 'both';
+}
 
 const initialState: ViewConfigState = {
   hiddenPredicates: [],
@@ -27,6 +50,12 @@ const initialState: ViewConfigState = {
   revealedNodeIds: [],
   pinnedNodeIds: [],
   sizeByDegree: false,
+  standaloneMode: loadStandaloneMode(),
+  minDegree: 0,
+  swimlaneMaxLanes: 8,
+  swimlaneGroupBy: 'component',
+  swimlaneSubGroupBy: 'none',
+  swimlaneHideOther: false,
 };
 
 function toggleInArray(arr: string[], value: string): string[] {
@@ -84,6 +113,24 @@ export const viewConfigSlice = createSlice({
     setSizeByDegree(state, action: PayloadAction<boolean>) {
       state.sizeByDegree = action.payload;
     },
+    setStandaloneMode(state, action: PayloadAction<StandaloneMode>) {
+      state.standaloneMode = action.payload;
+    },
+    setMinDegree(state, action: PayloadAction<number>) {
+      state.minDegree = Math.max(0, Math.min(20, Math.floor(action.payload)));
+    },
+    setSwimlaneMaxLanes(state, action: PayloadAction<number>) {
+      state.swimlaneMaxLanes = Math.max(1, Math.min(20, Math.floor(action.payload)));
+    },
+    setSwimlaneGroupBy(state, action: PayloadAction<SwimlaneGroupBy>) {
+      state.swimlaneGroupBy = action.payload;
+    },
+    setSwimlaneSubGroupBy(state, action: PayloadAction<SwimlaneSubGroupBy>) {
+      state.swimlaneSubGroupBy = action.payload;
+    },
+    setSwimlaneHideOther(state, action: PayloadAction<boolean>) {
+      state.swimlaneHideOther = action.payload;
+    },
     resetView() {
       return initialState;
     },
@@ -103,6 +150,12 @@ export const {
   revealNode,
   togglePinned,
   setSizeByDegree,
+  setStandaloneMode,
+  setMinDegree,
+  setSwimlaneMaxLanes,
+  setSwimlaneGroupBy,
+  setSwimlaneSubGroupBy,
+  setSwimlaneHideOther,
   resetView,
 } = viewConfigSlice.actions;
 

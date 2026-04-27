@@ -1,4 +1,4 @@
-import { Button, Checkbox, Group, ScrollArea, Stack } from '@mantine/core';
+import { Button, Checkbox } from '@mantine/core';
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
 import { useGetGraphQuery } from '@/features/graph';
 import { formatIri } from '@/features/view-config/prefixes';
@@ -22,7 +22,7 @@ export function PredicateFilter() {
 
   if (predicates.length === 0) {
     return (
-      <p className="text-xs text-neutral-400 italic">
+      <p className="text-xs italic text-neutral-400">
         No predicates in this graph.
       </p>
     );
@@ -33,8 +33,8 @@ export function PredicateFilter() {
   const noneHidden = hidden.size === 0;
 
   return (
-    <Stack gap={6}>
-      <Group gap={4} wrap="nowrap">
+    <div className="flex flex-col gap-1.5">
+      <div className="flex flex-nowrap items-center gap-1">
         <Button
           size="compact-xs"
           variant="default"
@@ -51,33 +51,31 @@ export function PredicateFilter() {
         >
           Hide all
         </Button>
-      </Group>
-      <ScrollArea.Autosize mah={240} type="auto">
-        <Stack gap={2}>
-          {predicates.map(({ predicate, count }) => {
-            const isHidden = hidden.has(predicate);
-            const display =
-              predicate === '' ? '(no predicate)' : formatIri(predicate, labelMode);
-            return (
-              <Checkbox
-                key={predicate}
-                size="xs"
-                checked={!isHidden}
-                onChange={() => dispatch(togglePredicateHidden(predicate))}
-                label={
-                  <span className="flex items-center justify-between gap-2 w-full">
-                    <span className="truncate" title={predicate}>
-                      {display}
-                    </span>
-                    <span className="text-neutral-400 tabular-nums">{count}</span>
+      </div>
+      <div className="flex max-h-60 flex-col gap-0.5 overflow-auto">
+        {predicates.map(({ predicate, count }) => {
+          const isHidden = hidden.has(predicate);
+          const display =
+            predicate === '' ? '(no predicate)' : formatIri(predicate, labelMode);
+          return (
+            <Checkbox
+              key={predicate}
+              size="xs"
+              checked={!isHidden}
+              onChange={() => dispatch(togglePredicateHidden(predicate))}
+              label={
+                <span className="flex w-full items-center justify-between gap-2">
+                  <span className="truncate" title={predicate}>
+                    {display}
                   </span>
-                }
-                styles={{ label: { width: '100%' } }}
-              />
-            );
-          })}
-        </Stack>
-      </ScrollArea.Autosize>
-    </Stack>
+                  <span className="tabular-nums text-neutral-400">{count}</span>
+                </span>
+              }
+              styles={{ label: { width: '100%' } }}
+            />
+          );
+        })}
+      </div>
+    </div>
   );
 }

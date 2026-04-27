@@ -13,7 +13,8 @@ first for the quick repo map; this doc is the deeper "how we do things here."
 ## 1. Folder philosophy — feature-first, not type-first
 
 We organize by **feature**, not by file kind. Everything a feature needs lives
-in one folder: its slice, its components, its selectors, its tests.
+in one folder: its slice, its components, its selectors. Tests live in a
+parallel `tests/` tree at the project root that mirrors `src/`.
 
 ```
 src/
@@ -31,11 +32,15 @@ src/
     ├── ui/                  # uiSlice — panels, selection, nonces
     ├── url-state/           # URL ↔ store sync
     └── view-config/         # layout picker, labels, palette, focus
+
+tests/                       # mirrors src/, plus tests/setup.ts for Vitest
+└── features/graph/graphSlice.test.ts   # tests for src/features/graph/graphSlice.ts
 ```
 
 **Rules of thumb**
 
-- A feature owns its slice, its selectors, its components, and its tests.
+- A feature owns its slice, its selectors, and its components; its tests live
+  at the mirrored path under `tests/`.
 - Feature barrels (`features/<name>/index.ts`) re-export only what other
   features need. Internal helpers stay un-exported.
 - If two features start importing the same thing, it probably belongs in
@@ -341,6 +346,19 @@ Strict mode is on: `noUnusedLocals`, `noUnusedParameters`,
 npm test              # one-shot
 npm run test:watch    # TDD loop
 ```
+
+### Where tests live
+
+Tests are kept **out of `src/`** so feature folders stay focused on shipping
+code. Mirror the source path under `tests/`:
+
+```
+src/features/graph/graphSlice.ts        →  tests/features/graph/graphSlice.test.ts
+src/shared/components/ErrorBoundary.tsx →  tests/shared/components/ErrorBoundary.test.tsx
+```
+
+`tests/setup.ts` is the Vitest setup file (jsdom polyfills for `matchMedia`
+and `ResizeObserver`).
 
 ### What to test
 

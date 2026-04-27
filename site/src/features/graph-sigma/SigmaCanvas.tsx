@@ -1,5 +1,8 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import Graph from 'graphology';
+import circular from 'graphology-layout/circular';
+import forceAtlas2 from 'graphology-layout-forceatlas2';
+import noverlap from 'graphology-layout-noverlap';
 import {
   SigmaContainer,
   useLoadGraph,
@@ -19,8 +22,10 @@ import {
   selectHiddenPredicates,
   selectHiddenTypes,
   selectLabelMode,
+  selectMinDegree,
   selectRevealedNodeIds,
   selectSizeByDegree,
+  selectStandaloneMode,
   useGraphDerivedData,
 } from '@/features/view-config';
 import { revealNode } from '@/features/view-config/viewConfigSlice';
@@ -41,9 +46,12 @@ function SigmaLoader() {
   const focusDepth = useAppSelector(selectFocusDepth);
   const revealedNodeIds = useAppSelector(selectRevealedNodeIds);
   const sizeByDegree = useAppSelector(selectSizeByDegree);
+  const standaloneMode = useAppSelector(selectStandaloneMode);
+  const minDegree = useAppSelector(selectMinDegree);
   const fitViewNonce = useAppSelector((s) => s.ui.fitViewNonce);
   const revealNonce = useAppSelector((s) => s.ui.revealNonce);
   const selectedNodeId = useAppSelector((s) => s.ui.selectedNodeId);
+  const selectedEdgeId = useAppSelector((s) => s.ui.selectedEdgeId);
 
   const { data } = useGetGraphQuery(selectedGraphId, { skip: !selectedGraphId });
   const derived = useGraphDerivedData(data);
@@ -58,6 +66,8 @@ function SigmaLoader() {
       focusNodeId,
       focusDepth,
       revealedNodeIds,
+      standaloneMode,
+      minDegree,
     });
   }, [
     data,
@@ -67,6 +77,8 @@ function SigmaLoader() {
     focusNodeId,
     focusDepth,
     revealedNodeIds,
+    standaloneMode,
+    minDegree,
   ]);
 
   useEffect(() => {
@@ -75,17 +87,12 @@ function SigmaLoader() {
       return;
     }
     const g = new Graph({ multi: true, type: 'directed' });
-    const N = filteredGraph.nodes.length;
-    const cx = 0;
-    const cy = 0;
-    const R = Math.max(200, Math.sqrt(N) * 40);
-    filteredGraph.nodes.forEach((n, i) => {
-      const angle = (i / Math.max(1, N)) * Math.PI * 2;
+    filteredGraph.nodes.forEach((n) => {
       const deg = derived.degree.get(n.id) ?? 0;
       const size = sizeByDegree ? Math.max(4, Math.min(22, 4 + Math.sqrt(deg) * 2.2)) : 8;
       g.addNode(n.id, {
-        x: cx + Math.cos(angle) * R,
-        y: cy + Math.sin(angle) * R,
+        x: 0,
+        y: 0,
         size,
         label: formatIri(n.id, labelMode, { label: n.label }),
         color: colorForType(derived.nodeTypes.get(n.id) ?? null),
@@ -95,11 +102,51 @@ function SigmaLoader() {
       if (!g.hasNode(e.source) || !g.hasNode(e.target)) return;
       g.addEdgeWithKey(e.id, e.source, e.target, {
         label: e.label ? formatIri(e.label, labelMode) : '',
-        color: '#cbd5e1',
-        size: 1,
+        color: 'rgba(148, 163, 184, 0.55)',
+        size: 1.1,
         type: 'arrow',
       });
     });
+
+    // Seed positions on a circle so forceAtlas2 has something to work with —
+    // FA2 won't disambiguate from a single point.
+    const N = g.order;
+    circular.assign(g, { scale: Math.max(300, Math.sqrt(N) * 60) });
+
+    // Run forceAtlas2 in-place. linLog separates clusters far better than
+    // linear mode for the typical GO-CAM hairball; strong gravity keeps
+    // disconnected components from drifting off-screen.
+    if (N > 1) {
+      const iterations = N > 2000 ? 200 : N > 500 ? 350 : 600;
+      forceAtlas2.assign(g, {
+        iterations,
+        settings: {
+          barnesHutOptimize: N > 500,
+          barnesHutTheta: 0.5,
+          linLogMode: true,
+          outboundAttractionDistribution: true,
+          adjustSizes: true,
+          edgeWeightInfluence: 0,
+          scalingRatio: 8,
+          gravity: 1.5,
+          strongGravityMode: false,
+          slowDown: 1 + Math.log(Math.max(2, N)),
+        },
+      });
+
+      // Post-pass: spread overlapping nodes apart. Bounded iteration count
+      // — converges fast for the small overlap residue FA2 leaves behind.
+      noverlap.assign(g, {
+        maxIterations: 80,
+        settings: {
+          margin: 4,
+          ratio: 1.05,
+          speed: 3,
+          gridSize: 20,
+        },
+      });
+    }
+
     loadGraph(g);
   }, [filteredGraph, derived.nodeTypes, derived.degree, labelMode, sizeByDegree, loadGraph]);
 
@@ -109,18 +156,30 @@ function SigmaLoader() {
     camera.animatedReset({ duration: 400 });
   }, [fitViewNonce, sigma]);
 
+  const lastRevealNonce = useRef(0);
   useEffect(() => {
-    if (revealNonce === 0 || !selectedNodeId) return;
+    if (revealNonce === lastRevealNonce.current) return;
+    lastRevealNonce.current = revealNonce;
+    if (revealNonce === 0) return;
     const g = sigma.getGraph();
-    if (!g.hasNode(selectedNodeId)) return;
-    const display = sigma.getNodeDisplayData(selectedNodeId);
-    if (!display) return;
+    let target: { x: number; y: number } | null = null;
+    if (selectedNodeId && g.hasNode(selectedNodeId)) {
+      const d = sigma.getNodeDisplayData(selectedNodeId);
+      if (d) target = { x: d.x, y: d.y };
+    } else if (selectedEdgeId && g.hasEdge(selectedEdgeId)) {
+      const sourceId = g.source(selectedEdgeId);
+      const targetId = g.target(selectedEdgeId);
+      const sd = sigma.getNodeDisplayData(sourceId);
+      const td = sigma.getNodeDisplayData(targetId);
+      if (sd && td) target = { x: (sd.x + td.x) / 2, y: (sd.y + td.y) / 2 };
+    }
+    if (!target) return;
     const camera = sigma.getCamera();
     camera.animate(
-      { x: display.x, y: display.y, ratio: 0.4 },
+      { x: target.x, y: target.y, ratio: 0.4 },
       { duration: 500 },
     );
-  }, [revealNonce, selectedNodeId, sigma]);
+  }, [revealNonce, selectedNodeId, selectedEdgeId, sigma]);
 
   useEffect(() => {
     let lastClick: { id: string; at: number } | null = null;
@@ -172,13 +231,18 @@ export function SigmaCanvas() {
 
   return (
     <SigmaContainer
-      style={{ height: '100%', width: '100%', background: '#ffffff' }}
+      style={{ height: '100%', width: '100%', background: '#0F172A' }}
       settings={{
         renderEdgeLabels: true,
         defaultEdgeType: 'arrow',
         labelDensity: 0.07,
         labelGridCellSize: 60,
         labelRenderedSizeThreshold: 6,
+        labelColor: { color: '#E2E8F0' },
+        edgeLabelColor: { color: '#94A3B8' },
+        labelFont: 'system-ui, sans-serif',
+        labelSize: 12,
+        labelWeight: '500',
         zIndex: true,
       }}
     >

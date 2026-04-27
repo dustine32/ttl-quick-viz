@@ -2,9 +2,6 @@ import {
   ActionIcon,
   Badge,
   CopyButton,
-  Group,
-  ScrollArea,
-  Stack,
   Tooltip,
   UnstyledButton,
 } from '@mantine/core';
@@ -49,15 +46,15 @@ export function NodeInspector({ nodeId }: { nodeId: string }) {
   const attrEntries: [string, unknown][] = Object.entries(node.attrs ?? {});
 
   return (
-    <Stack gap="sm">
-      <Stack gap={2}>
-        <div className="text-xs font-semibold uppercase text-neutral-500 tracking-[0.4px]">
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-0.5">
+        <div className="text-xs font-semibold uppercase tracking-[0.4px] text-neutral-500">
           Node
         </div>
-        <div className="text-sm font-semibold break-all">
+        <div className="break-all text-sm font-semibold">
           {formatIri(node.id, labelMode, { label: node.label })}
         </div>
-      </Stack>
+      </div>
 
       <KeyValueRow label="ID" value={node.id} />
       {node.label && node.label !== node.id && (
@@ -65,20 +62,20 @@ export function NodeInspector({ nodeId }: { nodeId: string }) {
       )}
 
       {attrEntries.length > 0 && (
-        <Stack gap={2}>
-          <div className="text-xs font-semibold uppercase text-neutral-500 tracking-[0.4px]">
+        <div className="flex flex-col gap-0.5">
+          <div className="text-xs font-semibold uppercase tracking-[0.4px] text-neutral-500">
             Attributes
           </div>
           {attrEntries.map(([k, v]) => (
             <KeyValueRow key={k} label={k} value={String(v)} />
           ))}
-        </Stack>
+        </div>
       )}
 
       <KeyValueRow label="Degree" value={String(degree)} />
 
-      <Stack gap={2}>
-        <div className="text-xs font-semibold uppercase text-neutral-500 tracking-[0.4px]">
+      <div className="flex flex-col gap-0.5">
+        <div className="text-xs font-semibold uppercase tracking-[0.4px] text-neutral-500">
           Edges ({neighbors.length})
         </div>
         {neighbors.length === 0 ? (
@@ -86,45 +83,43 @@ export function NodeInspector({ nodeId }: { nodeId: string }) {
             No connected edges.
           </p>
         ) : (
-          <ScrollArea.Autosize mah={260}>
-            <Stack gap={2}>
-              {neighbors.map(({ edge, direction, neighborId }) => (
-                <Group key={edge.id} gap={6} wrap="nowrap" align="flex-start">
-                  <Badge size="xs" variant="light" color={direction === 'out' ? 'blue' : 'teal'}>
-                    {direction === 'out' ? '→' : '←'}
-                  </Badge>
-                  <Stack gap={0} style={{ flex: 1, minWidth: 0 }}>
-                    <UnstyledButton onClick={() => dispatch(selectEdge(edge.id))}>
-                      <span className="block text-xs text-blue-600 truncate">
-                        {edge.label ? formatIri(edge.label, labelMode) : edge.id}
-                      </span>
-                    </UnstyledButton>
-                    <UnstyledButton
-                      onClick={() => {
-                        dispatch(selectNode(neighborId));
-                        dispatch(requestReveal());
-                      }}
-                    >
-                      <span className="block text-xs truncate break-all">
-                        {formatIri(neighborId, labelMode)}
-                      </span>
-                    </UnstyledButton>
-                  </Stack>
-                </Group>
-              ))}
-            </Stack>
-          </ScrollArea.Autosize>
+          <div className="flex max-h-[260px] flex-col gap-0.5 overflow-auto">
+            {neighbors.map(({ edge, direction, neighborId }) => (
+              <div key={edge.id} className="flex flex-nowrap items-start gap-1.5">
+                <Badge size="xs" variant="light" color={direction === 'out' ? 'blue' : 'teal'}>
+                  {direction === 'out' ? '→' : '←'}
+                </Badge>
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <UnstyledButton onClick={() => dispatch(selectEdge(edge.id))}>
+                    <span className="block truncate text-xs text-blue-600">
+                      {edge.label ? formatIri(edge.label, labelMode) : edge.id}
+                    </span>
+                  </UnstyledButton>
+                  <UnstyledButton
+                    onClick={() => {
+                      dispatch(selectNode(neighborId));
+                      dispatch(requestReveal());
+                    }}
+                  >
+                    <span className="block truncate break-all text-xs">
+                      {formatIri(neighborId, labelMode)}
+                    </span>
+                  </UnstyledButton>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
-      </Stack>
-    </Stack>
+      </div>
+    </div>
   );
 }
 
 function KeyValueRow({ label, value }: { label: string; value: string }) {
   return (
-    <Group gap={6} wrap="nowrap" align="flex-start">
-      <span className="text-xs text-neutral-500 min-w-16">{label}</span>
-      <span className="text-xs break-all flex-1">{value}</span>
+    <div className="flex flex-nowrap items-start gap-1.5">
+      <span className="min-w-16 text-xs text-neutral-500">{label}</span>
+      <span className="flex-1 break-all text-xs">{value}</span>
       <CopyButton value={value}>
         {({ copied, copy }) => (
           <Tooltip label={copied ? 'Copied' : 'Copy'}>
@@ -146,6 +141,6 @@ function KeyValueRow({ label, value }: { label: string; value: string }) {
           </Tooltip>
         )}
       </CopyButton>
-    </Group>
+    </div>
   );
 }

@@ -1,20 +1,25 @@
 export type { Graph, GraphNode, GraphEdge, GraphSummary } from '@/features/graph/types';
-export type { GraphRenderer } from '@/features/graph/graphSlice';
+export type { GraphRenderer } from '@/features/graph/slices/graphSlice';
 export {
   graphSlice,
   graphReducer,
   setSelectedGraphId,
   setRenderer,
-} from '@/features/graph/graphSlice';
+} from '@/features/graph/slices/graphSlice';
 export {
   graphApi,
   useGetGraphsQuery,
   useGetGraphQuery,
+  useGetGraphTtlQuery,
   useConvertAllMutation,
   useRebuildGraphMutation,
-} from '@/features/graph/graphApi';
-export type { ConvertResponse, GraphConversionResult } from '@/features/graph/graphApi';
-export { useElkLayout } from '@/features/graph/useElkLayout';
-export type { UseElkLayoutResult } from '@/features/graph/useElkLayout';
-export { GraphCanvas } from '@/features/graph/GraphCanvas';
-export { GraphList } from '@/features/graph/GraphList';
+} from '@/features/graph/slices/graphApiSlice';
+export type {
+  ConvertResponse,
+  GraphConversionResult,
+} from '@/features/graph/slices/graphApiSlice';
+export { useElkLayout } from '@/features/graph/hooks/useElkLayout';
+export type { UseElkLayoutResult } from '@/features/graph/hooks/useElkLayout';
+export { GraphCanvas } from '@/features/graph/components/GraphCanvas';
+export { GraphList } from '@/features/graph/components/GraphList';
+export { StandaloneList } from '@/features/graph/components/StandaloneList';

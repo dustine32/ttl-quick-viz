@@ -1,4 +1,7 @@
 export { AppShell } from '@/layout/AppShell';
+export { CanvasHeader } from '@/layout/CanvasHeader';
+export { IconRail } from '@/layout/IconRail';
+export { PanelHeader } from '@/layout/PanelHeader';
 export { Toolbar } from '@/layout/Toolbar';
 export { LeftPanel } from '@/layout/LeftPanel';
 export { RightPanel } from '@/layout/RightPanel';

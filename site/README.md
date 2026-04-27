@@ -7,10 +7,11 @@ Web front end for **ttl-quick-viz**: a React 19 + Vite SPA that loads TTL-derive
 ```bash
 cd site
 npm install
+cp .env.example .env   # edit VITE_API_URL if api/ isn't on http://localhost:8000
 npm run dev
 ```
 
-The dev server runs on Vite's default port (5173). It proxies `/api/*` to `http://localhost:8000`, so the FastAPI service in [`../api/`](../api/README.md) must be running — otherwise graph requests return 502 and the UI stays empty.
+The dev server runs on Vite's default port (5173). The browser fetches the FastAPI service in [`../api/`](../api/README.md) directly using `VITE_API_URL` — no Vite proxy. The api must be running, and its `CORS_ALLOW_ORIGINS` must include the site origin (`http://localhost:5173` covered by default).
 
 Hotkeys: `Ctrl+B` left panel, `Ctrl+Alt+B` right panel, `Ctrl+K` command palette, `F` fit view, `R` re-run layout, `Esc` clear selection.
 
@@ -62,7 +63,7 @@ Path alias: `@/*` → `src/*`.
 
 ## Architecture
 
-The graph wire shape (`Graph`, `GraphNode`, `GraphEdge`, `GraphSummary`) lives in [`src/features/graph/types.ts`](./src/features/graph/types.ts) and is shared by both renderers. The same contract is implemented on the Python side in `api/src/app/domain/` and produced by `conversion/ttl2json.py` — changing any one without the others will drift the system. Data travels: component → RTK Query (`src/features/graph/graphApi.ts`, `baseUrl: '/api'`) → Vite proxy → `api/` FastAPI → JSON → renderer.
+The graph wire shape (`Graph`, `GraphNode`, `GraphEdge`, `GraphSummary`) lives in [`src/features/graph/types.ts`](./src/features/graph/types.ts) and is shared by both renderers. The same contract is implemented on the Python side in `api/src/app/domain/` and produced by `conversion/ttl2json.py` — changing any one without the others will drift the system. Data travels: component → RTK Query (`src/features/graph/graphApi.ts`, `baseUrl: import.meta.env.VITE_API_URL`) → `api/` FastAPI (CORS-allowed) → JSON → renderer.
 
 ## Stack
 
@@ -75,7 +76,7 @@ The graph wire shape (`Graph`, `GraphNode`, `GraphEdge`, `GraphSummary`) lives i
 
 ## Troubleshooting
 
-- **Graph requests fail with 502 / empty UI** — the `api/` FastAPI service isn't running on `:8000`. Start it (`cd ../api && …`) or change the proxy target in `vite.config.ts` if the api binds a different port.
+- **Graph requests fail / empty UI** — the `api/` FastAPI service isn't running, `VITE_API_URL` points at the wrong host/port, or the api's `CORS_ALLOW_ORIGINS` doesn't include the site origin. Check the browser console: a network error means the api is down or unreachable; a CORS message means the api needs the site origin added.
 - **Nodes/edges missing fields or runtime type errors** — the wire shape in `src/features/graph/types.ts` has drifted from `api/src/app/domain/` or `conversion/ttl2json.py`. Align all three.
 - **Hotkeys don't fire in inputs** — expected; Mantine's `useHotkeys` ignores input/textarea focus. Blur first.
 - **`npm install` fails on Windows with long paths** — enable long paths or run the install from a shorter path.

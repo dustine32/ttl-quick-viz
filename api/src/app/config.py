@@ -17,9 +17,9 @@ class Settings(BaseSettings):
     graphs_dir: Path
     input_dir: Path | None = Field(default=None)
     enable_watcher: bool = Field(default=False)
-    watcher_debounce_ms: int = Field(default=500)
-    host: str = Field(default="127.0.0.1")
-    port: int = Field(default=8000)
+    watcher_debounce_ms: int = Field(default=2000)
+    host: str
+    port: int
     log_level: str = Field(default="INFO")
 
 

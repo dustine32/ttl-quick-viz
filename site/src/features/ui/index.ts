@@ -7,6 +7,8 @@ export {
   toggleRightPanel,
   setRightPanelOpen,
   setRightPanelTab,
+  toggleBottomPanel,
+  setBottomPanelOpen,
   selectNode,
   selectEdge,
   clearSelection,

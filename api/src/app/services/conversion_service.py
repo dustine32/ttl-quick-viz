@@ -58,6 +58,23 @@ class ConversionService:
         result = convert_file(ttl_path, self._graphs_dir, force=force)
         return _to_api_result(result)
 
+    def get_ttl(self, graph_id: str) -> str:
+        """Return the raw `<INPUT_DIR>/<graph_id>.ttl` contents.
+
+        Raises ``TtlNotFound`` if the file does not exist or resolves outside
+        ``INPUT_DIR`` (defense in depth — ``_validate_id`` already blocks the
+        characters that would let a path escape).
+        """
+        self._validate_id(graph_id)
+        input_dir = self._require_input_dir()
+        candidate = (input_dir / f"{graph_id}.ttl").resolve()
+        root = input_dir.resolve()
+        if root != candidate.parent and root not in candidate.parents:
+            raise TtlNotFound(graph_id)
+        if not candidate.is_file():
+            raise TtlNotFound(graph_id)
+        return candidate.read_text(encoding="utf-8")
+
     def _require_input_dir(self) -> Path:
         if self._input_dir is None:
             raise InputDirNotConfigured("INPUT_DIR is not set")

@@ -57,9 +57,11 @@ api/
 | Env var | Default | Required | Meaning |
 |---|---|---|---|
 | `GRAPHS_DIR` | — | yes | Directory scanned for `<id>.json` files. |
-| `HOST` | `127.0.0.1` | no | Bind address. |
-| `PORT` | `8000` | no | Bind port. |
+| `HOST` | — | yes | Bind address. |
+| `PORT` | — | yes | Bind port. |
 | `LOG_LEVEL` | `INFO` | no | stdlib logging level. |
+
+CORS is open to all origins — this is a local dev tool, not a production service.
 
 Settings load from `.env` if present; env vars override.
 
@@ -88,4 +90,4 @@ docker run --rm -p 8000:8000 \
 
 - **`poetry install` lands packages in `...\uv\python\...` instead of `.venv/`.** Your shell has `VIRTUAL_ENV` set to a uv-managed Python install directory (often set by the VSCode Python extension). Check with `echo $VIRTUAL_ENV`. Fix by either pointing VSCode's interpreter at `.\.venv\Scripts\python.exe` (Command Palette → *Python: Select Interpreter*) or running `unset VIRTUAL_ENV` before `poetry install`.
 - **`poetry: command not found`.** Install as a uv tool so it lands on `PATH`: `uv tool install poetry`.
-- **Startup fails with a pydantic validation error for `GRAPHS_DIR`.** Intentional — the service refuses to start without a valid graph directory. Either copy `.env.example` to `.env` and set `GRAPHS_DIR`, or export it in your shell.
+- **Startup fails with a pydantic validation error.** Intentional — `GRAPHS_DIR`, `HOST`, and `PORT` are all required, no defaults. Copy `.env.example` to `.env` or export them in your shell.
