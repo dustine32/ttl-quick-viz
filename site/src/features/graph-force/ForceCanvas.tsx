@@ -6,6 +6,7 @@ import type {
   LinkObject,
 } from 'react-force-graph-2d';
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
+import { diffStyleFor, useDiffOverlay } from '@/features/diff';
 import { useGetGraphQuery } from '@/features/graph';
 import { clearSelection, selectNode } from '@/features/ui';
 import {
@@ -31,12 +32,19 @@ type ForceNode = NodeObject & {
   label: string;
   color: string;
   degree: number;
+  diffOpacity?: number;
+  diffBorder?: string | null;
 };
 
 type ForceLink = LinkObject & {
+  id: string;
   source: string;
   target: string;
   label: string;
+  diffStroke?: string;
+  diffOpacity?: number;
+  diffWidth?: number;
+  diffDashed?: boolean;
 };
 
 type ForceData = { nodes: ForceNode[]; links: ForceLink[] };
@@ -64,12 +72,14 @@ export function ForceCanvas() {
   const { data, isLoading, error } = useGetGraphQuery(selectedGraphId, {
     skip: !selectedGraphId,
   });
+  const diffOverlay = useDiffOverlay(data);
   const derived = useGraphDerivedData(data);
 
   const filteredGraph = useMemo(() => {
-    if (!data) return undefined;
+    const sourceGraph = diffOverlay.active ? diffOverlay.graph : data;
+    if (!sourceGraph) return undefined;
     return applyView({
-      graph: data,
+      graph: sourceGraph,
       hiddenPredicates,
       hiddenTypes,
       nodeTypes: derived.nodeTypes,
@@ -81,6 +91,7 @@ export function ForceCanvas() {
     });
   }, [
     data,
+    diffOverlay,
     hiddenPredicates,
     hiddenTypes,
     derived.nodeTypes,
@@ -93,19 +104,34 @@ export function ForceCanvas() {
 
   const graphData: ForceData = useMemo(() => {
     if (!filteredGraph) return { nodes: [], links: [] };
-    const nodes: ForceNode[] = filteredGraph.nodes.map((n) => ({
-      id: n.id,
-      label: formatIri(n.id, labelMode, { label: n.label }),
-      color: colorForType(derived.nodeTypes.get(n.id) ?? null),
-      degree: derived.degree.get(n.id) ?? 0,
-    }));
-    const links: ForceLink[] = filteredGraph.edges.map((e) => ({
-      source: e.source,
-      target: e.target,
-      label: e.label ? formatIri(e.label, labelMode) : '',
-    }));
+    const nodes: ForceNode[] = filteredGraph.nodes.map((n) => {
+      const status = diffOverlay.active ? diffOverlay.nodeStatus(n.id) : undefined;
+      const ds = status ? diffStyleFor(status) : null;
+      return {
+        id: n.id,
+        label: formatIri(n.id, labelMode, { label: n.label }),
+        color: ds ? ds.fill : colorForType(derived.nodeTypes.get(n.id) ?? null),
+        degree: derived.degree.get(n.id) ?? 0,
+        diffOpacity: ds ? ds.opacity : 1,
+        diffBorder: ds && status !== 'unchanged' ? ds.stroke : null,
+      };
+    });
+    const links: ForceLink[] = filteredGraph.edges.map((e) => {
+      const status = diffOverlay.active ? diffOverlay.edgeStatus(e.id) : undefined;
+      const ds = status ? diffStyleFor(status) : null;
+      return {
+        id: e.id,
+        source: e.source,
+        target: e.target,
+        label: e.label ? formatIri(e.label, labelMode) : '',
+        diffStroke: ds ? ds.stroke : undefined,
+        diffOpacity: ds ? ds.opacity : 1,
+        diffWidth: ds && status !== 'unchanged' ? 2.6 : undefined,
+        diffDashed: ds?.dashed ?? false,
+      };
+    });
     return { nodes, links };
-  }, [filteredGraph, derived.nodeTypes, derived.degree, labelMode]);
+  }, [filteredGraph, derived.nodeTypes, derived.degree, labelMode, diffOverlay]);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const fgRef = useRef<ForceGraphMethods<ForceNode, ForceLink> | undefined>(undefined);
@@ -213,8 +239,16 @@ export function ForceCanvas() {
         warmupTicks={60}
         d3AlphaDecay={0.022}
         d3VelocityDecay={0.32}
-        linkColor={(l) => (isLinkedToSelected(l) ? 'rgba(96, 165, 250, 0.95)' : 'rgba(148, 163, 184, 0.45)')}
-        linkWidth={(l) => (isLinkedToSelected(l) ? 2.2 : 1.2)}
+        linkColor={(l) => {
+          if (l.diffStroke) {
+            // Mix stroke color with opacity (force-graph doesn't accept rgba via opacity prop on links).
+            const op = l.diffOpacity ?? 1;
+            return op < 1 ? `${l.diffStroke}${Math.round(op * 255).toString(16).padStart(2, '0')}` : l.diffStroke;
+          }
+          return isLinkedToSelected(l) ? 'rgba(96, 165, 250, 0.95)' : 'rgba(148, 163, 184, 0.45)';
+        }}
+        linkWidth={(l) => l.diffWidth ?? (isLinkedToSelected(l) ? 2.2 : 1.2)}
+        linkLineDash={(l) => (l.diffDashed ? [6, 4] : null)}
         linkCurvature={linkCurvature}
         linkDirectionalArrowLength={5}
         linkDirectionalArrowRelPos={0.95}
@@ -235,6 +269,10 @@ export function ForceCanvas() {
           const fill = node.color ?? UNTYPED_NODE_COLOR;
 
           const isSelected = node.id === selectedNodeId;
+          ctx.save();
+          if (typeof node.diffOpacity === 'number') {
+            ctx.globalAlpha = node.diffOpacity;
+          }
           // Outer glow — soft halo for everything, brighter when selected.
           const glowR = r + (isSelected ? 9 : 5);
           const glow = ctx.createRadialGradient(x, y, r * 0.6, x, y, glowR);
@@ -254,8 +292,8 @@ export function ForceCanvas() {
           ctx.arc(x, y, r, 0, Math.PI * 2);
           ctx.fillStyle = body;
           ctx.fill();
-          ctx.lineWidth = 1.2 / globalScale;
-          ctx.strokeStyle = isSelected ? '#BFDBFE' : 'rgba(15, 23, 42, 0.7)';
+          ctx.lineWidth = node.diffBorder ? 2.4 / globalScale : 1.2 / globalScale;
+          ctx.strokeStyle = node.diffBorder ?? (isSelected ? '#BFDBFE' : 'rgba(15, 23, 42, 0.7)');
           ctx.stroke();
 
           if (globalScale > 1.2) {
@@ -273,6 +311,7 @@ export function ForceCanvas() {
             ctx.fillStyle = '#E2E8F0';
             ctx.fillText(text, x, y + r + 3);
           }
+          ctx.restore();
         }}
         nodePointerAreaPaint={(node, color, ctx) => {
           const r = baseRadius(node.degree) + 4;

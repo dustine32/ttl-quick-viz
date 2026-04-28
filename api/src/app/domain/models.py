@@ -56,3 +56,12 @@ class ConvertResponse(BaseModel):
     okCount: int
     errorCount: int
     skippedCount: int
+
+
+class HistoryEntry(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    sha: str
+    subject: str
+    date: str  # ISO 8601 committer date
+    graph: Graph

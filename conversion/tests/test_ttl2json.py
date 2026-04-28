@@ -163,6 +163,28 @@ def test_build_graph_edge_without_axiom_has_empty_annotations(tmp_path: Path) ->
     assert data["annotations"] == {}
 
 
+# --- build_graph_from_string ----------------------------------------------
+
+
+def test_build_graph_from_string_matches_build_graph(minimal_ttl: Path) -> None:
+    """In-memory parse should produce the same MultiDiGraph as the file path
+    parse — they share the same walk."""
+    from_path = ttl2json.build_graph(minimal_ttl)
+    from_string = ttl2json.build_graph_from_string(MINIMAL_TTL)
+
+    assert isinstance(from_string, nx.MultiDiGraph)
+    assert sorted(from_path.nodes) == sorted(from_string.nodes)
+    assert sorted(from_path.edges(data=True)) == sorted(from_string.edges(data=True))
+
+    for nid in from_path.nodes:
+        assert from_path.nodes[nid] == from_string.nodes[nid]
+
+
+def test_build_graph_from_string_rejects_non_turtle() -> None:
+    with pytest.raises(Exception):
+        ttl2json.build_graph_from_string("this is not turtle { } @@@")
+
+
 # --- graph_to_json / convert_file -----------------------------------------
 
 

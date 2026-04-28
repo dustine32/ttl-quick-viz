@@ -10,6 +10,7 @@ import {
 import type { Edge, Node, ReactFlowInstance } from '@xyflow/react';
 import { Badge } from '@mantine/core';
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
+import { diffStyleFor, useDiffOverlay } from '@/features/diff';
 import { useGetGraphQuery } from '@/features/graph';
 import { useElkLayout } from '@/features/graph/hooks/useElkLayout';
 import { estimateNodeWidth } from '@/features/graph/services/elkOptions';
@@ -87,6 +88,7 @@ export function TreeCanvas() {
   const { data, isLoading, error } = useGetGraphQuery(selectedGraphId, {
     skip: !selectedGraphId,
   });
+  const diffOverlay = useDiffOverlay(data);
   const derived = useGraphDerivedData(data);
 
   // Default to fully-expanded whenever the user lands on a different graph.
@@ -96,9 +98,10 @@ export function TreeCanvas() {
   }, [dispatch, selectedGraphId]);
 
   const filteredGraph = useMemo(() => {
-    if (!data) return undefined;
+    const sourceGraph = diffOverlay.active ? diffOverlay.graph : data;
+    if (!sourceGraph) return undefined;
     return applyView({
-      graph: data,
+      graph: sourceGraph,
       hiddenPredicates,
       hiddenTypes,
       nodeTypes: derived.nodeTypes,
@@ -110,6 +113,7 @@ export function TreeCanvas() {
     });
   }, [
     data,
+    diffOverlay,
     hiddenPredicates,
     hiddenTypes,
     derived.nodeTypes,
@@ -212,13 +216,15 @@ export function TreeCanvas() {
     const hiddenMap = treeResult?.hiddenChildCount ?? new Map<string, number>();
     return layout.nodes.map((n) => {
       const type = derived.nodeTypes.get(n.id) ?? null;
+      const status = diffOverlay.active ? diffOverlay.nodeStatus(n.id) : undefined;
+      const ds = status ? diffStyleFor(status) : null;
       return {
         ...n,
         type: 'mindmap',
         data: {
           ...n.data,
           label: displayLabelIndex.get(n.id) ?? n.id,
-          color: colorForType(type),
+          color: ds ? ds.fill : colorForType(type),
           width: n.data.width,
           subtitle: type ? formatIri(type, labelMode) : null,
           hiddenChildCount: hiddenMap.get(n.id) ?? 0,
@@ -226,6 +232,12 @@ export function TreeCanvas() {
           subtreeColor: subtreeColors.get(n.id),
           hasChildren: hasChildrenSet.has(n.id),
         },
+        style: ds
+          ? {
+              ...n.style,
+              opacity: ds.opacity,
+            }
+          : n.style,
       };
     });
   }, [
@@ -236,6 +248,7 @@ export function TreeCanvas() {
     treeResult,
     subtreeColors,
     hasChildrenSet,
+    diffOverlay,
   ]);
 
   const styledEdges = useMemo<Edge[]>(
@@ -243,7 +256,9 @@ export function TreeCanvas() {
       layout.edges.map((e) => {
         const raw = typeof e.label === 'string' ? e.label : '';
         const displayLabel = raw ? formatIri(raw, labelMode) : undefined;
-        const stroke = subtreeColors.get(e.target) ?? '#94A3B8';
+        const status = diffOverlay.active ? diffOverlay.edgeStatus(e.id) : undefined;
+        const ds = status ? diffStyleFor(status) : null;
+        const stroke = ds ? ds.stroke : (subtreeColors.get(e.target) ?? '#94A3B8');
         return {
           ...e,
           type: 'default',
@@ -257,13 +272,14 @@ export function TreeCanvas() {
           },
           style: {
             stroke,
-            strokeWidth: 2,
-            strokeOpacity: 0.85,
+            strokeWidth: ds && status !== 'unchanged' ? 3 : 2,
+            strokeOpacity: ds ? ds.opacity : 0.85,
+            strokeDasharray: ds?.dashed ? '6 4' : undefined,
           },
           markerEnd: undefined,
         };
       }),
-    [layout.edges, labelMode, subtreeColors],
+    [layout.edges, labelMode, subtreeColors, diffOverlay],
   );
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<NodeData>>([]);

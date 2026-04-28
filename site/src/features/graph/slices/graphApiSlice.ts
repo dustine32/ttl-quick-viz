@@ -18,13 +18,23 @@ export type ConvertResponse = {
   skippedCount: number;
 };
 
+export type HistoryEntry = {
+  sha: string;
+  subject: string;
+  date: string;
+  graph: Graph;
+};
+
 export const graphApi = createApi({
   reducerPath: 'graphApi',
   baseQuery: fetchBaseQuery({ baseUrl: import.meta.env.VITE_API_URL }),
-  tagTypes: ['Graphs', 'Graph', 'GraphTtl'],
+  tagTypes: ['Graphs', 'Graph', 'GraphTtl', 'GraphTtlHistorical', 'GraphHistory'],
   refetchOnFocus: true,
   refetchOnReconnect: true,
   endpoints: (build) => ({
+    getHealth: build.query<{ status: string }, void>({
+      query: () => '/healthz',
+    }),
     getGraphs: build.query<GraphSummary[], void>({
       query: () => '/graphs',
       providesTags: (result) =>
@@ -45,6 +55,22 @@ export const graphApi = createApi({
         responseHandler: (response) => response.text(),
       }),
       providesTags: (_result, _err, id) => [{ type: 'GraphTtl' as const, id }],
+    }),
+    getGraphHistory: build.query<HistoryEntry[], { id: string; n?: number }>({
+      query: ({ id, n }) => ({
+        url: `/graphs/${id}/history`,
+        params: n != null ? { n } : undefined,
+      }),
+      providesTags: (_result, _err, { id }) => [{ type: 'GraphHistory' as const, id }],
+    }),
+    getGraphTtlAt: build.query<string, { id: string; sha: string }>({
+      query: ({ id, sha }) => ({
+        url: `/graphs/${id}/ttl/at/${sha}`,
+        responseHandler: (response) => response.text(),
+      }),
+      providesTags: (_result, _err, { id, sha }) => [
+        { type: 'GraphTtlHistorical' as const, id: `${id}@${sha}` },
+      ],
     }),
     convertAll: build.mutation<ConvertResponse, { force?: boolean } | void>({
       query: (arg) => ({
@@ -70,9 +96,12 @@ export const graphApi = createApi({
 });
 
 export const {
+  useGetHealthQuery,
   useGetGraphsQuery,
   useGetGraphQuery,
   useGetGraphTtlQuery,
+  useGetGraphTtlAtQuery,
+  useGetGraphHistoryQuery,
   useConvertAllMutation,
   useRebuildGraphMutation,
 } = graphApi;

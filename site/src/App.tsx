@@ -1,4 +1,5 @@
 import { useAppSelector } from '@/app/hooks';
+import { DiffPicker } from '@/features/diff';
 import { GraphCanvas, StandaloneList } from '@/features/graph';
 import { CytoscapeCanvas } from '@/features/graph-cytoscape';
 import { ForceCanvas, ForceCanvas3D } from '@/features/graph-force';
@@ -35,7 +36,7 @@ export default function App() {
       footer={<StatusBar />}
     >
       <CanvasHeader />
-      <div className="flex-1 min-h-0">
+      <div className="flex-1 min-h-0 canvas-dot-grid">
         {showOrphansOnly ? (
           <StandaloneList />
         ) : (
@@ -50,6 +51,7 @@ export default function App() {
           </>
         )}
       </div>
+      <DiffPicker />
     </AppShell>
   );
 }

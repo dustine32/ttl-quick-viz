@@ -1,9 +1,9 @@
 import { ActionIcon, Tooltip } from '@mantine/core';
+import { useState } from 'react';
 import {
   LuCircleHelp,
   LuCode,
   LuDatabase,
-  LuInfo,
   LuPanelRight,
   LuSettings2,
 } from 'react-icons/lu';
@@ -15,20 +15,19 @@ import {
   toggleRightPanel,
   type RightPanelTab,
 } from '@/features/ui';
+import { ShortcutsModal } from '@/layout/ShortcutsModal';
 
-type RailItem =
-  | {
-      kind: 'action';
-      key: string;
-      icon: React.ReactNode;
-      label: string;
-      onClick: () => void;
-      active?: boolean;
-    }
-  | { kind: 'spacer' };
+type RailItem = {
+  key: string;
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+  active?: boolean;
+};
 
 export function IconRail() {
   const dispatch = useAppDispatch();
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const leftPanelOpen = useAppSelector((s) => s.ui.leftPanelOpen);
   const rightPanelOpen = useAppSelector((s) => s.ui.rightPanelOpen);
   const rightTab = useAppSelector((s) => s.ui.rightPanelTab);
@@ -43,25 +42,27 @@ export function IconRail() {
     if (!rightPanelOpen) dispatch(toggleRightPanel());
   };
 
-  const items: RailItem[] = [
+  // Two semantic groups: data toggles (Graphs) and panel toggles
+  // (Inspector / View / TTL). A divider keeps them distinct in the rail.
+  const dataGroup: RailItem[] = [
     {
-      kind: 'action',
       key: 'graphs',
       icon: <LuDatabase size={18} />,
       label: 'Graphs (Ctrl+B)',
       active: leftPanelOpen,
       onClick: () => dispatch(toggleLeftPanel()),
     },
+  ];
+
+  const panelGroup: RailItem[] = [
     {
-      kind: 'action',
       key: 'inspector',
       icon: <LuPanelRight size={18} />,
-      label: 'Inspector',
+      label: 'Inspector (Ctrl+Alt+B)',
       active: rightPanelOpen && rightTab === 'properties',
       onClick: () => showRightTab('properties'),
     },
     {
-      kind: 'action',
       key: 'view',
       icon: <LuSettings2 size={18} />,
       label: 'View settings',
@@ -69,63 +70,72 @@ export function IconRail() {
       onClick: () => showRightTab('view'),
     },
     {
-      kind: 'action',
       key: 'ttl',
       icon: <LuCode size={18} />,
       label: 'TTL source (Ctrl+J)',
       active: bottomPanelOpen,
       onClick: () => dispatch(toggleBottomPanel()),
     },
-    { kind: 'spacer' },
-    {
-      kind: 'action',
-      key: 'help',
-      icon: <LuCircleHelp size={18} />,
-      label: 'Shortcuts',
-      onClick: () => {
-        /* placeholder */
-      },
-    },
-    {
-      kind: 'action',
-      key: 'about',
-      icon: <LuInfo size={18} />,
-      label: 'About',
-      onClick: () =>
-        window.open('https://github.com/anthropics/claude-code', '_blank', 'noopener'),
-    },
   ];
 
   return (
-    <div
-      className="flex h-full w-[48px] shrink-0 flex-col items-center border-r py-2"
-      style={{ background: 'var(--color-rail-bg)', borderColor: 'var(--color-border)' }}
-    >
-      <div className="flex w-full flex-1 flex-col items-center gap-1">
-        {items.map((item) =>
-          item.kind === 'spacer' ? (
-            <div key="spacer" className="flex-1" />
-          ) : (
-            <Tooltip key={item.key} label={item.label} position="right" withArrow openDelay={300}>
-              <ActionIcon
-                size="lg"
-                radius="md"
-                variant={item.active ? 'light' : 'subtle'}
-                color={item.active ? 'sky' : 'gray'}
-                aria-label={item.label}
-                onClick={item.onClick}
-                styles={{
-                  root: {
-                    color: item.active ? undefined : 'var(--color-text-muted)',
-                  },
-                }}
-              >
-                {item.icon}
-              </ActionIcon>
-            </Tooltip>
-          ),
-        )}
+    <>
+      <div
+        className="flex h-full w-[48px] shrink-0 flex-col items-center border-r py-2"
+        style={{ background: 'var(--color-rail-bg)', borderColor: 'var(--color-border)' }}
+      >
+        <div className="flex w-full flex-1 flex-col items-center gap-1">
+          {dataGroup.map((item) => (
+            <RailButton key={item.key} item={item} />
+          ))}
+          <div
+            className="my-1.5 h-px w-6"
+            style={{ background: 'var(--color-border)' }}
+            aria-hidden
+          />
+          {panelGroup.map((item) => (
+            <RailButton key={item.key} item={item} />
+          ))}
+        </div>
+
+        <Tooltip label="Keyboard shortcuts" position="right" withArrow openDelay={300}>
+          <ActionIcon
+            size="lg"
+            radius="md"
+            variant="subtle"
+            color="gray"
+            aria-label="Keyboard shortcuts"
+            onClick={() => setShortcutsOpen(true)}
+            styles={{ root: { color: 'var(--color-text-muted)' } }}
+          >
+            <LuCircleHelp size={18} />
+          </ActionIcon>
+        </Tooltip>
       </div>
-    </div>
+
+      <ShortcutsModal opened={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+    </>
+  );
+}
+
+function RailButton({ item }: { item: RailItem }) {
+  return (
+    <Tooltip label={item.label} position="right" withArrow openDelay={300}>
+      <ActionIcon
+        size="lg"
+        radius="md"
+        variant={item.active ? 'light' : 'subtle'}
+        color={item.active ? 'sky' : 'gray'}
+        aria-label={item.label}
+        onClick={item.onClick}
+        styles={{
+          root: {
+            color: item.active ? undefined : 'var(--color-text-muted)',
+          },
+        }}
+      >
+        {item.icon}
+      </ActionIcon>
+    </Tooltip>
   );
 }

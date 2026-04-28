@@ -9,7 +9,7 @@ import App from '@/App';
 import '@/index.css';
 
 const theme = createTheme({
-  primaryColor: 'sky',
+  primaryColor: 'mauve',
   primaryShade: { light: 6, dark: 5 },
   defaultRadius: 'md',
   fontFamily:
@@ -20,17 +20,17 @@ const theme = createTheme({
     fontWeight: '600',
   },
   colors: {
-    sky: [
-      '#E6F4FF',
-      '#BAE0FF',
-      '#91CAFF',
-      '#69B1FF',
-      '#4FB3FF',
-      '#2E94F0',
-      '#1677FF',
-      '#0958D9',
-      '#003EB3',
-      '#002C8C',
+    mauve: [
+      '#F4ECFF',
+      '#E5D2FF',
+      '#D2B0FF',
+      '#BC8AFF',
+      '#A968FF',
+      '#9B4BFF',
+      '#8839EF',
+      '#7C2DD8',
+      '#6620B8',
+      '#4F189A',
     ],
   },
 });

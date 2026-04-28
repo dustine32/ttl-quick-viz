@@ -2,6 +2,7 @@ import { useHotkeys } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { useCallback } from 'react';
 import { useAppDispatch } from '@/app/hooks';
+import { openPicker } from '@/features/diff';
 import { useConvertAllMutation } from '@/features/graph';
 import {
   clearSelection,
@@ -48,6 +49,7 @@ export function useAppHotkeys() {
     ['mod+alt+B', () => dispatch(toggleRightPanel())],
     ['mod+J', () => dispatch(toggleBottomPanel())],
     ['mod+K', () => dispatch(togglePalette())],
+    ['mod+D', () => dispatch(openPicker())],
     ['F', () => dispatch(requestFitView())],
     ['R', () => dispatch(requestRelayout())],
     ['shift+R', rebuild],

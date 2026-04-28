@@ -14,7 +14,7 @@ import {
 import { IconRail } from '@/layout/IconRail';
 
 const HEADER_HEIGHT = 52;
-const FOOTER_HEIGHT = 26;
+const FOOTER_HEIGHT = 30;
 
 type AppShellProps = {
   header: ReactNode;
@@ -73,8 +73,8 @@ export function AppShell({ header, navbar, aside, bottom, footer, children }: Ap
       <div
         style={{
           height: HEADER_HEIGHT,
-          background: 'var(--color-panel-bg)',
-          borderBottom: '1px solid var(--color-border)',
+          background: 'var(--color-topbar-bg)',
+          borderBottom: '1px solid var(--color-topbar-border)',
         }}
         className="shrink-0"
       >
@@ -86,8 +86,8 @@ export function AppShell({ header, navbar, aside, bottom, footer, children }: Ap
           <Panel id="upper" order={1} defaultSize={70} minSize={20}>
             <div className="flex h-full">
               <IconRail />
-              <div className="flex-1 min-w-0">
-                <PanelGroup direction="horizontal" autoSaveId="ttl-viz-layout" className="h-full w-full">
+              <div className="flex-1 min-w-0 p-[var(--gutter)] pl-0">
+                <PanelGroup direction="horizontal" autoSaveId="ttl-viz-layout" className="h-full w-full gap-[var(--gutter)]">
                   <Panel
                     id="left"
                     order={1}
@@ -100,35 +100,16 @@ export function AppShell({ header, navbar, aside, bottom, footer, children }: Ap
                     onCollapse={() => dispatch(setLeftPanelOpen(false))}
                     onExpand={() => dispatch(setLeftPanelOpen(true))}
                   >
-                    <div
-                      className="h-full overflow-auto"
-                      style={{
-                        background: 'var(--color-panel-bg)',
-                        borderRight: '1px solid var(--color-border)',
-                      }}
-                    >
-                      {navbar}
-                    </div>
+                    <div className="panel-card h-full overflow-auto">{navbar}</div>
                   </Panel>
 
-                  <PanelResizeHandle
-                    className="group relative w-[4px] transition-colors data-[resize-handle-state=hover]:bg-sky-400/40 data-[resize-handle-state=drag]:bg-sky-400/70"
-                    style={{ background: 'var(--color-border)' }}
-                  />
+                  <PanelResizeHandle className="resize-handle horizontal" />
 
                   <Panel id="main" order={2} defaultSize={64} minSize={30}>
-                    <div
-                      className="flex h-full flex-col"
-                      style={{ background: 'var(--color-canvas-bg)' }}
-                    >
-                      {children}
-                    </div>
+                    <div className="panel-card flex h-full flex-col">{children}</div>
                   </Panel>
 
-                  <PanelResizeHandle
-                    className="group relative w-[4px] transition-colors data-[resize-handle-state=hover]:bg-sky-400/40 data-[resize-handle-state=drag]:bg-sky-400/70"
-                    style={{ background: 'var(--color-border)' }}
-                  />
+                  <PanelResizeHandle className="resize-handle horizontal" />
 
                   <Panel
                     id="right"
@@ -142,25 +123,14 @@ export function AppShell({ header, navbar, aside, bottom, footer, children }: Ap
                     onCollapse={() => dispatch(setRightPanelOpen(false))}
                     onExpand={() => dispatch(setRightPanelOpen(true))}
                   >
-                    <div
-                      className="h-full overflow-auto"
-                      style={{
-                        background: 'var(--color-panel-bg)',
-                        borderLeft: '1px solid var(--color-border)',
-                      }}
-                    >
-                      {aside}
-                    </div>
+                    <div className="panel-card h-full overflow-auto">{aside}</div>
                   </Panel>
                 </PanelGroup>
               </div>
             </div>
           </Panel>
 
-          <PanelResizeHandle
-            className="group relative h-[4px] transition-colors data-[resize-handle-state=hover]:bg-sky-400/40 data-[resize-handle-state=drag]:bg-sky-400/70"
-            style={{ background: 'var(--color-border)' }}
-          />
+          <PanelResizeHandle className="resize-handle vertical" />
 
           <Panel
             id="bottom"
@@ -174,14 +144,8 @@ export function AppShell({ header, navbar, aside, bottom, footer, children }: Ap
             onCollapse={() => dispatch(setBottomPanelOpen(false))}
             onExpand={() => dispatch(setBottomPanelOpen(true))}
           >
-            <div
-              className="h-full overflow-hidden"
-              style={{
-                background: 'var(--color-panel-bg)',
-                borderTop: '1px solid var(--color-border)',
-              }}
-            >
-              {bottom}
+            <div className="h-full px-[var(--gutter)] pb-[var(--gutter)]">
+              <div className="panel-card h-full overflow-hidden">{bottom}</div>
             </div>
           </Panel>
         </PanelGroup>
