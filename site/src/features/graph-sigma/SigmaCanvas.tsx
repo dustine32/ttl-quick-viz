@@ -11,8 +11,18 @@ import {
 } from '@react-sigma/core';
 import '@react-sigma/core/lib/style.css';
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
+import { diffStyleFor, useDiffOverlay } from '@/features/diff';
 import { useGetGraphQuery } from '@/features/graph';
 import { clearSelection, selectNode } from '@/features/ui';
+
+const withOpacity = (hex: string, opacity: number): string => {
+  // sigma accepts `#RRGGBBAA` — bake opacity into the color directly.
+  if (!hex.startsWith('#') || hex.length !== 7) return hex;
+  const a = Math.max(0, Math.min(255, Math.round(opacity * 255)))
+    .toString(16)
+    .padStart(2, '0');
+  return `${hex}${a}`;
+};
 import {
   applyView,
   colorForType,
@@ -54,12 +64,14 @@ function SigmaLoader() {
   const selectedEdgeId = useAppSelector((s) => s.ui.selectedEdgeId);
 
   const { data } = useGetGraphQuery(selectedGraphId, { skip: !selectedGraphId });
+  const diffOverlay = useDiffOverlay(data);
   const derived = useGraphDerivedData(data);
 
   const filteredGraph = useMemo(() => {
-    if (!data) return undefined;
+    const sourceGraph = diffOverlay.active ? diffOverlay.graph : data;
+    if (!sourceGraph) return undefined;
     return applyView({
-      graph: data,
+      graph: sourceGraph,
       hiddenPredicates,
       hiddenTypes,
       nodeTypes: derived.nodeTypes,
@@ -71,6 +83,7 @@ function SigmaLoader() {
     });
   }, [
     data,
+    diffOverlay,
     hiddenPredicates,
     hiddenTypes,
     derived.nodeTypes,
@@ -89,21 +102,30 @@ function SigmaLoader() {
     const g = new Graph({ multi: true, type: 'directed' });
     filteredGraph.nodes.forEach((n) => {
       const deg = derived.degree.get(n.id) ?? 0;
-      const size = sizeByDegree ? Math.max(4, Math.min(22, 4 + Math.sqrt(deg) * 2.2)) : 8;
+      const status = diffOverlay.active ? diffOverlay.nodeStatus(n.id) : undefined;
+      const ds = status ? diffStyleFor(status) : null;
+      const baseSize = sizeByDegree ? Math.max(4, Math.min(22, 4 + Math.sqrt(deg) * 2.2)) : 8;
+      const size = ds && status !== 'unchanged' ? baseSize * 1.3 : baseSize;
+      const baseColor = ds ? ds.fill : colorForType(derived.nodeTypes.get(n.id) ?? null);
+      const color = ds ? withOpacity(baseColor, ds.opacity) : baseColor;
       g.addNode(n.id, {
         x: 0,
         y: 0,
         size,
         label: formatIri(n.id, labelMode, { label: n.label }),
-        color: colorForType(derived.nodeTypes.get(n.id) ?? null),
+        color,
       });
     });
     filteredGraph.edges.forEach((e) => {
       if (!g.hasNode(e.source) || !g.hasNode(e.target)) return;
+      const status = diffOverlay.active ? diffOverlay.edgeStatus(e.id) : undefined;
+      const ds = status ? diffStyleFor(status) : null;
+      const baseColor = ds ? ds.stroke : '#94A3B8';
+      const color = ds ? withOpacity(baseColor, ds.opacity) : 'rgba(148, 163, 184, 0.55)';
       g.addEdgeWithKey(e.id, e.source, e.target, {
         label: e.label ? formatIri(e.label, labelMode) : '',
-        color: 'rgba(148, 163, 184, 0.55)',
-        size: 1.1,
+        color,
+        size: ds && status !== 'unchanged' ? 2.4 : 1.1,
         type: 'arrow',
       });
     });
@@ -148,7 +170,7 @@ function SigmaLoader() {
     }
 
     loadGraph(g);
-  }, [filteredGraph, derived.nodeTypes, derived.degree, labelMode, sizeByDegree, loadGraph]);
+  }, [filteredGraph, derived.nodeTypes, derived.degree, labelMode, sizeByDegree, diffOverlay, loadGraph]);
 
   useEffect(() => {
     if (fitViewNonce === 0) return;

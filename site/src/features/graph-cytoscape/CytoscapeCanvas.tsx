@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import cytoscape from 'cytoscape';
 import type { Core, ElementDefinition, EventObject } from 'cytoscape';
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
+import { diffStyleFor, useDiffOverlay } from '@/features/diff';
 import { useGetGraphQuery } from '@/features/graph';
 import { clearSelection, selectEdge, selectNode } from '@/features/ui';
 import {
@@ -47,11 +48,13 @@ export function CytoscapeCanvas() {
   const { data, isLoading, error } = useGetGraphQuery(selectedGraphId, {
     skip: !selectedGraphId,
   });
+  const diffOverlay = useDiffOverlay(data);
   const derived = useGraphDerivedData(data);
   const filteredGraph = useMemo(() => {
-    if (!data) return undefined;
+    const sourceGraph = diffOverlay.active ? diffOverlay.graph : data;
+    if (!sourceGraph) return undefined;
     return applyView({
-      graph: data,
+      graph: sourceGraph,
       hiddenPredicates,
       hiddenTypes,
       nodeTypes: derived.nodeTypes,
@@ -63,6 +66,7 @@ export function CytoscapeCanvas() {
     });
   }, [
     data,
+    diffOverlay,
     hiddenPredicates,
     hiddenTypes,
     derived.nodeTypes,
@@ -79,22 +83,37 @@ export function CytoscapeCanvas() {
     if (!containerRef.current || !filteredGraph) return;
 
     const elements: ElementDefinition[] = [
-      ...filteredGraph.nodes.map((n) => ({
-        data: {
-          id: n.id,
-          label: formatIri(n.id, labelMode, { label: n.label }),
-          color: colorForType(derived.nodeTypes.get(n.id) ?? null),
-          degree: derived.degree.get(n.id) ?? 0,
-        },
-      })),
-      ...filteredGraph.edges.map((e) => ({
-        data: {
-          id: e.id,
-          source: e.source,
-          target: e.target,
-          label: e.label ? formatIri(e.label, labelMode) : '',
-        },
-      })),
+      ...filteredGraph.nodes.map((n) => {
+        const status = diffOverlay.active ? diffOverlay.nodeStatus(n.id) : undefined;
+        const ds = status ? diffStyleFor(status) : null;
+        return {
+          data: {
+            id: n.id,
+            label: formatIri(n.id, labelMode, { label: n.label }),
+            color: ds ? ds.fill : colorForType(derived.nodeTypes.get(n.id) ?? null),
+            degree: derived.degree.get(n.id) ?? 0,
+            diffOpacity: ds ? ds.opacity : 1,
+            diffBorder: ds ? ds.stroke : '#1B1F2A',
+            diffBorderWidth: ds && status !== 'unchanged' ? 4 : 2,
+          },
+        };
+      }),
+      ...filteredGraph.edges.map((e) => {
+        const status = diffOverlay.active ? diffOverlay.edgeStatus(e.id) : undefined;
+        const ds = status ? diffStyleFor(status) : null;
+        return {
+          data: {
+            id: e.id,
+            source: e.source,
+            target: e.target,
+            label: e.label ? formatIri(e.label, labelMode) : '',
+            diffStroke: ds ? ds.stroke : '#5B6478',
+            diffOpacity: ds ? ds.opacity : 1,
+            diffWidth: ds && status !== 'unchanged' ? 3 : 1.5,
+            diffDashed: ds?.dashed ? 1 : 0,
+          },
+        };
+      }),
     ];
 
     const cy = cytoscape({
@@ -106,7 +125,10 @@ export function CytoscapeCanvas() {
           style: {
             shape: 'ellipse',
             'background-color': `data(color)`,
-            'background-opacity': 0.9,
+            'background-opacity': diffOverlay.active
+              ? ('data(diffOpacity)' as never)
+              : 0.9,
+            opacity: diffOverlay.active ? ('data(diffOpacity)' as never) : 1,
             label: 'data(label)',
             color: '#0F1218',
             'text-valign': 'bottom',
@@ -125,8 +147,12 @@ export function CytoscapeCanvas() {
             height: sizeByDegree
               ? ('mapData(degree, 0, 30, 28, 70)' as never)
               : 38,
-            'border-width': 2,
-            'border-color': '#1B1F2A',
+            'border-width': diffOverlay.active
+              ? ('data(diffBorderWidth)' as never)
+              : 2,
+            'border-color': diffOverlay.active
+              ? ('data(diffBorder)' as never)
+              : '#1B1F2A',
             'border-opacity': 1,
             'overlay-padding': 6,
           },
@@ -142,12 +168,21 @@ export function CytoscapeCanvas() {
         {
           selector: 'edge',
           style: {
-            width: 1.5,
-            'line-color': '#5B6478',
-            'target-arrow-color': '#5B6478',
+            width: diffOverlay.active ? ('data(diffWidth)' as never) : 1.5,
+            'line-color': diffOverlay.active
+              ? ('data(diffStroke)' as never)
+              : '#5B6478',
+            'line-style': diffOverlay.active
+              ? (((ele: cytoscape.EdgeSingular) =>
+                  ele.data('diffDashed') ? 'dashed' : 'solid') as never)
+              : 'solid',
+            'target-arrow-color': diffOverlay.active
+              ? ('data(diffStroke)' as never)
+              : '#5B6478',
             'target-arrow-shape': 'triangle',
             'arrow-scale': 0.9,
             'curve-style': 'bezier',
+            opacity: diffOverlay.active ? ('data(diffOpacity)' as never) : 1,
             label: 'data(label)',
             'font-size': 9,
             'font-family': 'system-ui, sans-serif',
@@ -195,7 +230,7 @@ export function CytoscapeCanvas() {
       cy.destroy();
       cyRef.current = null;
     };
-  }, [filteredGraph, derived.nodeTypes, derived.degree, labelMode, layoutAlgo, sizeByDegree, dispatch]);
+  }, [filteredGraph, derived.nodeTypes, derived.degree, labelMode, layoutAlgo, sizeByDegree, diffOverlay, dispatch]);
 
   useEffect(() => {
     if (fitViewNonce === 0) return;

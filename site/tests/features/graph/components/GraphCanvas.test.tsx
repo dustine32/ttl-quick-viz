@@ -3,6 +3,7 @@ import { MantineProvider } from '@mantine/core';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { GraphCanvas } from '@/features/graph/components/GraphCanvas';
+import { diffReducer } from '@/features/diff/slices/diffSlice';
 import { graphReducer } from '@/features/graph/slices/graphSlice';
 import { uiReducer } from '@/features/ui/uiSlice';
 import { viewConfigReducer } from '@/features/view-config/viewConfigSlice';
@@ -20,7 +21,12 @@ vi.mock('@/features/graph/slices/graphApiSlice', () => ({
 
 function makeStore(selectedGraphId: string) {
   return configureStore({
-    reducer: { graph: graphReducer, ui: uiReducer, viewConfig: viewConfigReducer },
+    reducer: {
+      graph: graphReducer,
+      ui: uiReducer,
+      viewConfig: viewConfigReducer,
+      diff: diffReducer,
+    },
     preloadedState: {
       graph: { selectedGraphId, renderer: 'xyflow' as const },
     },

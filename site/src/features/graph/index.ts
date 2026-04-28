@@ -8,15 +8,19 @@ export {
 } from '@/features/graph/slices/graphSlice';
 export {
   graphApi,
+  useGetHealthQuery,
   useGetGraphsQuery,
   useGetGraphQuery,
   useGetGraphTtlQuery,
+  useGetGraphTtlAtQuery,
+  useGetGraphHistoryQuery,
   useConvertAllMutation,
   useRebuildGraphMutation,
 } from '@/features/graph/slices/graphApiSlice';
 export type {
   ConvertResponse,
   GraphConversionResult,
+  HistoryEntry,
 } from '@/features/graph/slices/graphApiSlice';
 export { useElkLayout } from '@/features/graph/hooks/useElkLayout';
 export type { UseElkLayoutResult } from '@/features/graph/hooks/useElkLayout';

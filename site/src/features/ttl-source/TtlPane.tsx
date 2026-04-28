@@ -27,6 +27,7 @@ import {
   useGraphDerivedData,
 } from '@/features/view-config';
 import { findEdgeLine, findNodeLine, tailOfIri } from '@/features/ttl-source/findLine';
+import { TtlDiffPane } from '@/features/ttl-source/TtlDiffPane';
 import '@/features/ttl-source/registerTurtle';
 
 type LineTarget =
@@ -48,6 +49,8 @@ export function TtlPane() {
   const bottomPanelOpen = useAppSelector((s) => s.ui.bottomPanelOpen);
   const selectedEdgeId = useAppSelector((s) => s.ui.selectedEdgeId);
   const selectedNodeId = useAppSelector((s) => s.ui.selectedNodeId);
+  const compareSha = useAppSelector((s) => s.diff.compareSha);
+  const diffActive = compareSha != null;
 
   const skip = !bottomPanelOpen || !selectedGraphId;
   const {
@@ -254,28 +257,39 @@ export function TtlPane() {
 
   return (
     <div className="flex h-full flex-col bg-white text-gray-900">
-      <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-3 py-1.5">
+      <div
+        className="flex h-9 shrink-0 items-center justify-between gap-2 px-3"
+        style={{
+          background: 'var(--color-panel-elev)',
+          borderBottom: '1px solid var(--color-border)',
+        }}
+      >
         <div className="flex flex-nowrap items-center gap-2">
-          <span className="text-xs font-semibold uppercase tracking-[0.4px] text-neutral-500">
-            TTL Source
+          <span
+            className="text-[12px] font-semibold tracking-tight"
+            style={{ color: 'var(--color-text)' }}
+          >
+            {diffActive ? 'TTL Diff' : 'TTL Source'}
           </span>
           {selectedGraphId && (
-            <span className="text-xs text-neutral-400">·</span>
-          )}
-          {selectedGraphId && (
-            <span className="font-mono text-xs text-slate-500">
+            <span className="font-mono text-xs" style={{ color: 'var(--color-text-muted)' }}>
               {selectedGraphId}.ttl
+              {diffActive && compareSha && (
+                <span className="ml-1 text-amber-700">
+                  vs <code>{compareSha.slice(0, 7)}</code>
+                </span>
+              )}
             </span>
           )}
-          {isFetching && <Loader size={10} />}
-          {highlightedLine != null && (
-            <span className="text-xs tabular-nums text-neutral-400">
+          {isFetching && !diffActive && <Loader size={10} />}
+          {!diffActive && highlightedLine != null && (
+            <span className="text-xs tabular-nums" style={{ color: 'var(--color-text-dim)' }}>
               line {highlightedLine + 1} / {lineCount}
             </span>
           )}
         </div>
         <div className="flex flex-nowrap items-center gap-0.5">
-          {ttl && (
+          {ttl && !diffActive && (
             <CopyButton value={ttl}>
               {({ copied, copy }) => (
                 <Tooltip label={copied ? 'Copied' : 'Copy TTL'} withArrow>
@@ -301,16 +315,20 @@ export function TtlPane() {
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto">
-        <TtlBody
-          selectedGraphId={selectedGraphId}
-          isFetching={isFetching}
-          error={error}
-          ttl={ttl}
-          highlightedLine={highlightedLine}
-          lineRef={lineRef}
-          lineTargets={lineTargets}
-          onTargetClick={onTargetClick}
-        />
+        {diffActive ? (
+          <TtlDiffPane />
+        ) : (
+          <TtlBody
+            selectedGraphId={selectedGraphId}
+            isFetching={isFetching}
+            error={error}
+            ttl={ttl}
+            highlightedLine={highlightedLine}
+            lineRef={lineRef}
+            lineTargets={lineTargets}
+            onTargetClick={onTargetClick}
+          />
+        )}
       </div>
     </div>
   );

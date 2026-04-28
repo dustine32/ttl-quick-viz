@@ -24,6 +24,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             f"GRAPHS_DIR does not exist or is not a directory: {settings.graphs_dir}"
         )
 
+    if settings.models_git_repo is not None and not (settings.models_git_repo / ".git").exists():
+        logger.warning(
+            "MODELS_GIT_REPO is set but %s is not a git working tree; history endpoint will return 503",
+            settings.models_git_repo,
+        )
+
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         watcher: ConversionWatcher | None = None

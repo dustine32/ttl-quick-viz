@@ -5,6 +5,7 @@ from __future__ import annotations
 from ttl2json.core import (
     ConversionResult,
     build_graph,
+    build_graph_from_string,
     convert_dir,
     convert_file,
     graph_to_json,
@@ -14,6 +15,7 @@ from ttl2json.core import (
 __all__ = [
     "ConversionResult",
     "build_graph",
+    "build_graph_from_string",
     "convert_dir",
     "convert_file",
     "graph_to_json",

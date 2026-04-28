@@ -7,6 +7,7 @@ import {
   viewConfigReducer,
 } from '@/features/view-config';
 import { treeReducer } from '@/features/graph-tree/treeSlice';
+import { diffReducer } from '@/features/diff';
 
 export const store = configureStore({
   reducer: {
@@ -14,6 +15,7 @@ export const store = configureStore({
     ui: uiReducer,
     viewConfig: viewConfigReducer,
     tree: treeReducer,
+    diff: diffReducer,
     [graphApi.reducerPath]: graphApi.reducer,
   },
   middleware: (gDM) => gDM().concat(graphApi.middleware),

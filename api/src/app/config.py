@@ -16,6 +16,8 @@ class Settings(BaseSettings):
 
     graphs_dir: Path
     input_dir: Path | None = Field(default=None)
+    models_git_repo: Path | None = Field(default=None)
+    models_git_subdir: str = Field(default="models")
     enable_watcher: bool = Field(default=False)
     watcher_debounce_ms: int = Field(default=2000)
     host: str

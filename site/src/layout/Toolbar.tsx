@@ -78,14 +78,23 @@ export function Toolbar() {
     <div className="flex h-full flex-nowrap items-center justify-between gap-5 px-4">
       {/* Brand */}
       <div className="flex min-w-[200px] flex-nowrap items-center gap-2.5">
-        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-blue-500/10 text-blue-600">
-          <LuNetwork size={16} />
+        <div
+          className="flex h-7 w-7 items-center justify-center rounded-md text-white"
+          style={{ background: 'var(--color-accent)' }}
+        >
+          <LuNetwork size={15} />
         </div>
         <div className="flex items-baseline gap-2">
           <h1 className="m-0 text-sm font-semibold tracking-tight text-gray-900">
             TTL Quick Viz
           </h1>
-          <span className="rounded bg-blue-500/10 px-1.5 py-[1px] text-[9.5px] font-semibold uppercase tracking-wider text-blue-600">
+          <span
+            className="rounded px-1.5 py-[1px] text-[9.5px] font-semibold uppercase tracking-wider"
+            style={{
+              background: 'var(--color-accent-soft)',
+              color: 'var(--color-accent)',
+            }}
+          >
             Beta
           </span>
         </div>
@@ -96,42 +105,56 @@ export function Toolbar() {
         <SearchBox />
       </div>
 
-      {/* Renderer / global actions */}
-      <div className="flex flex-nowrap items-center gap-2.5">
-        <Tooltip label="Standalone nodes" withArrow openDelay={400}>
-          <SegmentedControl
+      {/* Right cluster: canvas-config pill, then global actions */}
+      <div className="flex flex-nowrap items-center gap-2">
+        <div className="toolbar-cluster">
+          <Tooltip label="Standalone nodes" withArrow openDelay={400}>
+            <SegmentedControl
+              size="xs"
+              value={standaloneMode}
+              aria-label="Standalone nodes"
+              data={[
+                { value: 'hide', label: 'Connected' },
+                { value: 'both', label: 'All' },
+                { value: 'only', label: 'Orphans' },
+              ]}
+              onChange={(v) => dispatch(setStandaloneMode(v as StandaloneMode))}
+            />
+          </Tooltip>
+          <Select
             size="xs"
-            value={standaloneMode}
-            aria-label="Standalone nodes"
+            w={130}
+            value={renderer}
+            allowDeselect={false}
+            aria-label="Renderer"
+            disabled={standaloneMode === 'only'}
             data={[
-              { value: 'hide', label: 'Connected' },
-              { value: 'both', label: 'All' },
-              { value: 'only', label: 'Orphans' },
+              { value: 'xyflow', label: 'React Flow' },
+              { value: 'cytoscape', label: 'Cytoscape' },
+              { value: 'force', label: 'Force 2D' },
+              { value: 'force3d', label: 'Force 3D' },
+              { value: 'sigma', label: 'Sigma (WebGL)' },
+              { value: 'graphin', label: 'Graphin (G6)' },
+              { value: 'tree', label: 'Tree / Mind map' },
             ]}
-            onChange={(v) => dispatch(setStandaloneMode(v as StandaloneMode))}
+            onChange={(v) => {
+              if (v) dispatch(setRenderer(v as GraphRenderer));
+            }}
           />
+          {layoutVisible && <LayoutPicker />}
+        </div>
+
+        <Tooltip label="Rebuild all graphs (Shift+R)" withArrow>
+          <ActionIcon
+            variant="subtle"
+            color="gray"
+            aria-label="Rebuild all graphs"
+            onClick={handleRebuildAll}
+            loading={rebuilding}
+          >
+            <LuRefreshCw size={16} />
+          </ActionIcon>
         </Tooltip>
-        <Select
-          size="xs"
-          w={130}
-          value={renderer}
-          allowDeselect={false}
-          aria-label="Renderer"
-          disabled={standaloneMode === 'only'}
-          data={[
-            { value: 'xyflow', label: 'React Flow' },
-            { value: 'cytoscape', label: 'Cytoscape' },
-            { value: 'force', label: 'Force 2D' },
-            { value: 'force3d', label: 'Force 3D' },
-            { value: 'sigma', label: 'Sigma (WebGL)' },
-            { value: 'graphin', label: 'Graphin (G6)' },
-            { value: 'tree', label: 'Tree / Mind map' },
-          ]}
-          onChange={(v) => {
-            if (v) dispatch(setRenderer(v as GraphRenderer));
-          }}
-        />
-        {layoutVisible && <LayoutPicker />}
 
         <Menu position="bottom-end" shadow="md" width={220}>
           <Menu.Target>
@@ -142,17 +165,6 @@ export function Toolbar() {
             </Tooltip>
           </Menu.Target>
           <Menu.Dropdown>
-            <Menu.Label>Data</Menu.Label>
-            <Menu.Item
-              leftSection={<LuRefreshCw size={14} />}
-              onClick={handleRebuildAll}
-              disabled={rebuilding}
-              rightSection={<span className="text-[10px] text-neutral-500">⇧R</span>}
-            >
-              {rebuilding ? 'Rebuilding…' : 'Rebuild all graphs'}
-            </Menu.Item>
-
-            <Menu.Divider />
             <Menu.Label>Share</Menu.Label>
             <Menu.Item
               leftSection={copied ? <LuCheck size={14} /> : <LuLink size={14} />}

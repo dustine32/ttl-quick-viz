@@ -3,9 +3,22 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import Response
 
-from app.api.deps import get_conversion_service, get_service
-from app.domain.models import ConvertResponse, Graph, GraphConversionResult, GraphSummary
+from app.api.deps import (
+    get_conversion_service,
+    get_diff_service,
+    get_git_history_service,
+    get_service,
+)
+from app.domain.models import (
+    ConvertResponse,
+    Graph,
+    GraphConversionResult,
+    GraphSummary,
+    HistoryEntry,
+)
 from app.services.conversion_service import ConversionService
+from app.services.diff_service import DiffService
+from app.services.git_history_service import GitHistoryService
 from app.services.graph_service import GraphService
 
 router = APIRouter(tags=["graphs"])
@@ -47,3 +60,26 @@ def rebuild_graph(
 ) -> GraphConversionResult:
     """Re-run ttl2json on <INPUT_DIR>/<graph_id>.ttl."""
     return conversion.rebuild_one(graph_id, force=force)
+
+
+@router.get("/graphs/{graph_id}/history", response_model=list[HistoryEntry])
+def get_graph_history(
+    graph_id: str,
+    n: int = Query(default=5, ge=1, le=20),
+    diff: DiffService = Depends(get_diff_service),
+) -> list[HistoryEntry]:
+    """Last `n` commits in MODELS_GIT_REPO that touched models/<id>.ttl,
+    each converted to a Graph in-memory."""
+    return diff.get_history(graph_id, n)
+
+
+@router.get("/graphs/{graph_id}/ttl/at/{sha}", response_class=Response)
+def get_graph_ttl_at(
+    graph_id: str,
+    sha: str,
+    git: GitHistoryService = Depends(get_git_history_service),
+) -> Response:
+    """Raw TTL of `<subdir>/<graph_id>.ttl` at commit `sha`. Powers the
+    side-by-side TTL diff pane."""
+    ttl = git.read_ttl_at(sha, graph_id)
+    return Response(content=ttl, media_type="text/turtle; charset=utf-8")

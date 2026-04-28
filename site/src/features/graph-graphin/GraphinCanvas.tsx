@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { Graphin } from '@antv/graphin';
 import type { Graph as G6Graph, GraphOptions } from '@antv/g6';
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
+import { diffStyleFor, useDiffOverlay } from '@/features/diff';
 import { useGetGraphQuery } from '@/features/graph';
 import { clearSelection, selectNode } from '@/features/ui';
 import {
@@ -44,12 +45,14 @@ export function GraphinCanvas() {
   const { data, isLoading, error } = useGetGraphQuery(selectedGraphId, {
     skip: !selectedGraphId,
   });
+  const diffOverlay = useDiffOverlay(data);
   const derived = useGraphDerivedData(data);
 
   const filteredGraph = useMemo(() => {
-    if (!data) return undefined;
+    const sourceGraph = diffOverlay.active ? diffOverlay.graph : data;
+    if (!sourceGraph) return undefined;
     return applyView({
-      graph: data,
+      graph: sourceGraph,
       hiddenPredicates,
       hiddenTypes,
       nodeTypes: derived.nodeTypes,
@@ -61,6 +64,7 @@ export function GraphinCanvas() {
     });
   }, [
     data,
+    diffOverlay,
     hiddenPredicates,
     hiddenTypes,
     derived.nodeTypes,
@@ -75,22 +79,37 @@ export function GraphinCanvas() {
     if (!filteredGraph) return undefined;
     const nodes = filteredGraph.nodes.map((n) => {
       const deg = derived.degree.get(n.id) ?? 0;
-      const size = sizeByDegree ? Math.max(16, Math.min(60, 16 + Math.sqrt(deg) * 6)) : 24;
+      const baseSize = sizeByDegree ? Math.max(16, Math.min(60, 16 + Math.sqrt(deg) * 6)) : 24;
+      const status = diffOverlay.active ? diffOverlay.nodeStatus(n.id) : undefined;
+      const ds = status ? diffStyleFor(status) : null;
       return {
         id: n.id,
         data: {
           label: formatIri(n.id, labelMode, { label: n.label }),
-          color: colorForType(derived.nodeTypes.get(n.id) ?? null),
-          size,
+          color: ds ? ds.fill : colorForType(derived.nodeTypes.get(n.id) ?? null),
+          size: ds && status !== 'unchanged' ? baseSize * 1.2 : baseSize,
+          opacity: ds ? ds.opacity : 1,
+          border: ds && status !== 'unchanged' ? ds.stroke : '#ffffff',
+          borderWidth: ds && status !== 'unchanged' ? 3 : 2,
         },
       };
     });
-    const edges = filteredGraph.edges.map((e) => ({
-      id: e.id,
-      source: e.source,
-      target: e.target,
-      data: { label: e.label ? formatIri(e.label, labelMode) : '' },
-    }));
+    const edges = filteredGraph.edges.map((e) => {
+      const status = diffOverlay.active ? diffOverlay.edgeStatus(e.id) : undefined;
+      const ds = status ? diffStyleFor(status) : null;
+      return {
+        id: e.id,
+        source: e.source,
+        target: e.target,
+        data: {
+          label: e.label ? formatIri(e.label, labelMode) : '',
+          color: ds ? ds.stroke : '#cbd5e1',
+          opacity: ds ? ds.opacity : 1,
+          width: ds && status !== 'unchanged' ? 2.6 : 1.5,
+          dashed: ds?.dashed ?? false,
+        },
+      };
+    });
     return {
       data: { nodes, edges },
       autoFit: 'view',
@@ -99,8 +118,9 @@ export function GraphinCanvas() {
       node: {
         style: {
           fill: (d: { data?: { color?: string } }) => d.data?.color ?? '#94a3b8',
-          stroke: '#ffffff',
-          lineWidth: 2,
+          stroke: (d: { data?: { border?: string } }) => d.data?.border ?? '#ffffff',
+          lineWidth: (d: { data?: { borderWidth?: number } }) => d.data?.borderWidth ?? 2,
+          opacity: (d: { data?: { opacity?: number } }) => d.data?.opacity ?? 1,
           size: (d: { data?: { size?: number } }) => d.data?.size ?? 24,
           labelText: (d: { data?: { label?: string } }) => d.data?.label ?? '',
           labelFill: '#0f172a',
@@ -125,8 +145,10 @@ export function GraphinCanvas() {
       },
       edge: {
         style: {
-          stroke: '#cbd5e1',
-          lineWidth: 1.5,
+          stroke: (d: { data?: { color?: string } }) => d.data?.color ?? '#cbd5e1',
+          opacity: (d: { data?: { opacity?: number } }) => d.data?.opacity ?? 1,
+          lineWidth: (d: { data?: { width?: number } }) => d.data?.width ?? 1.5,
+          lineDash: (d: { data?: { dashed?: boolean } }) => (d.data?.dashed ? [6, 4] : undefined),
           endArrow: true,
           endArrowSize: 6,
           labelText: (d: { data?: { label?: string } }) => d.data?.label ?? '',
@@ -154,7 +176,7 @@ export function GraphinCanvas() {
         { type: 'click-select', multiple: false },
       ],
     } as unknown as GraphOptions;
-  }, [filteredGraph, derived.nodeTypes, derived.degree, labelMode, sizeByDegree]);
+  }, [filteredGraph, derived.nodeTypes, derived.degree, labelMode, sizeByDegree, diffOverlay]);
 
   const graphRef = useRef<G6Graph | null>(null);
   const lastClickRef = useRef<{ id: string; at: number } | null>(null);

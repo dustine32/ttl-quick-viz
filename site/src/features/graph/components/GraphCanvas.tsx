@@ -19,6 +19,7 @@ type NodeData = {
 };
 type FlowInstance = ReactFlowInstance<Node<NodeData>, Edge>;
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
+import { diffStyleFor, useDiffOverlay } from '@/features/diff';
 import { useGetGraphQuery } from '@/features/graph/slices/graphApiSlice';
 import { useElkLayout } from '@/features/graph/hooks/useElkLayout';
 import { PrettyNode } from '@/features/graph/components/PrettyNode';
@@ -85,6 +86,7 @@ export function GraphCanvas() {
   const { data, isLoading, error } = useGetGraphQuery(selectedGraphId, {
     skip: !selectedGraphId,
   });
+  const diffOverlay = useDiffOverlay(data);
   const derived = useGraphDerivedData(data);
   const filteredGraph = useMemo(() => {
     if (!data) return undefined;
@@ -215,24 +217,38 @@ export function GraphCanvas() {
     () =>
       layout.nodes.map((n) => {
         const type = derived.nodeTypes.get(n.id) ?? null;
+        const status = diffOverlay.active ? diffOverlay.nodeStatus(n.id) : undefined;
+        const diffStyle = status ? diffStyleFor(status) : null;
         return {
           ...n,
           data: {
             ...n.data,
             label: displayLabelIndex.get(n.id) ?? n.id,
-            color: colorForType(type),
+            color: diffStyle ? diffStyle.fill : colorForType(type),
             width: n.data.width,
             subtitle: type ? formatIri(type, labelMode) : null,
           },
+          style: diffStyle
+            ? {
+                ...n.style,
+                opacity: diffStyle.opacity,
+              }
+            : n.style,
         };
       }),
-    [layout.nodes, derived.nodeTypes, displayLabelIndex, labelMode],
+    [layout.nodes, derived.nodeTypes, displayLabelIndex, labelMode, diffOverlay],
   );
   const styledEdges = useMemo<Edge[]>(
     () =>
       layout.edges.map((e) => {
         const raw = typeof e.label === 'string' ? e.label : '';
         const displayLabel = raw ? formatIri(raw, labelMode) : undefined;
+        const status = diffOverlay.active ? diffOverlay.edgeStatus(e.id) : undefined;
+        const diffStyle = status ? diffStyleFor(status) : null;
+        const stroke = diffStyle ? diffStyle.stroke : '#5B6478';
+        // Diff edges (non-unchanged) pop with thicker stroke + full opacity;
+        // unchanged edges fade hard so the deltas are obvious at a glance.
+        const isDiffEmphasized = diffStyle && status !== 'unchanged';
         return {
           ...e,
           type: 'default',
@@ -247,19 +263,20 @@ export function GraphCanvas() {
             letterSpacing: -0.1,
           },
           style: {
-            stroke: '#5B6478',
-            strokeWidth: 1.6,
-            strokeOpacity: 0.95,
+            stroke,
+            strokeWidth: isDiffEmphasized ? 2.6 : 1.6,
+            strokeOpacity: diffStyle ? diffStyle.opacity : 0.95,
+            strokeDasharray: diffStyle?.dashed ? '6 4' : undefined,
           },
           markerEnd: {
             type: MarkerType.ArrowClosed,
-            color: '#5B6478',
+            color: stroke,
             width: 18,
             height: 18,
           },
         };
       }),
-    [layout.edges, labelMode],
+    [layout.edges, labelMode, diffOverlay],
   );
   const laneFlowNodes = useMemo<Node[]>(() => {
     if (!swimlaneLayout) return EMPTY_LANE_NODES;

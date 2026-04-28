@@ -82,7 +82,21 @@ def _node_id(term: Node) -> str:
 def build_graph(ttl_path: Path) -> nx.MultiDiGraph:
     g = Graph()
     g.parse(str(ttl_path), format="turtle")
+    return _walk_rdflib_graph(g)
 
+
+def build_graph_from_string(ttl_text: str) -> nx.MultiDiGraph:
+    """Build the same MultiDiGraph as `build_graph` from in-memory TTL text.
+
+    Useful for callers that have the TTL bytes already (e.g. via `git show`)
+    and don't want to round-trip through a temp file.
+    """
+    g = Graph()
+    g.parse(data=ttl_text, format="turtle")
+    return _walk_rdflib_graph(g)
+
+
+def _walk_rdflib_graph(g: Graph) -> nx.MultiDiGraph:
     edge_annotations, axiom_nodes = collapse_axioms(g)
 
     labels: dict[str, str] = {}
