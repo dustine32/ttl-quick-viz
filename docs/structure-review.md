@@ -179,3 +179,35 @@ If you only fix three things:
 3. **Generate TS types from the FastAPI OpenAPI schema.** Prevents drift before it starts. An hour.
 
 Everything else is polish.
+
+---
+
+## Addendum (2026-04-30): `vscode/` subproject
+
+A fourth subproject was added: `vscode/` — a VSCode extension that registers
+a Custom Editor for `*.ttl` files. Right-click a `.ttl` in the explorer →
+"Open as Graph" opens the file as a graph view in a new editor tab.
+
+How it changes the structure:
+
+- **No api/ in the extension path.** The extension host parses TTL with a TS
+  port of `ttl2json` (`vscode/src/conversion/`, uses `n3`). Conversion runs
+  in-process; the rendered graph is posted to a webview via `postMessage`.
+- **Webview reuses `site/` as a library.** A second Vite build
+  (`site/vite.config.webview.ts`, output `site/dist-webview/`) emits a bundle
+  that uses the same renderers, layout, TTL pane, etc. — but with a
+  postMessage-backed RTK Query `baseQuery`
+  (`site/src/webview/webviewBaseQuery.ts`) instead of the HTTP one.
+- **Wire shape now has a fourth consumer.** `vscode/src/conversion/convert.ts`
+  produces the site's `Graph`/`GraphNode`/`GraphEdge` shape **directly**,
+  skipping the `node_link_data` → `translate.py` hop. Wire-shape changes now
+  require coordinated edits in *four* places, not three.
+- **Distribution.** `.vsix` sideload only for v1
+  (`code --install-extension ttl-quick-viz-<version>.vsix`). No Marketplace
+  publish yet — that's deferred.
+
+Plan: `.plans/feature/vscode-extension.md`. The original audit's
+recommendation #2 (lift data fetching into `features/viewer/`) is partially
+mooted by the webview pattern: the webview's baseQuery is itself the data
+fetching abstraction, so renderers don't need to be refactored. Still worth
+doing for SPA hygiene.

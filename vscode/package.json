@@ -1,0 +1,97 @@
+{
+  "name": "ttl-quick-viz",
+  "displayName": "TTL Quick Viz",
+  "description": "Open a .ttl file (Turtle / RDF) as an interactive property-graph view.",
+  "version": "0.1.2",
+  "private": true,
+  "publisher": "tmushayahama",
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": [
+    "Visualization",
+    "Other"
+  ],
+  "keywords": [
+    "ttl",
+    "turtle",
+    "rdf",
+    "graph",
+    "go-cam",
+    "pathways2go"
+  ],
+  "main": "./out/extension.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dustine32/ttl-quick-viz",
+    "directory": "vscode"
+  },
+  "activationEvents": [
+    "onCustomEditor:ttlQuickViz.graph",
+    "onCommand:ttlQuickViz.openGraph"
+  ],
+  "contributes": {
+    "customEditors": [
+      {
+        "viewType": "ttlQuickViz.graph",
+        "displayName": "TTL Quick Viz",
+        "selector": [
+          {
+            "filenamePattern": "*.ttl"
+          }
+        ],
+        "priority": "option"
+      }
+    ],
+    "commands": [
+      {
+        "command": "ttlQuickViz.openGraph",
+        "title": "Open as Graph",
+        "category": "TTL Quick Viz"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "when": "resourceExtname == .ttl",
+          "command": "ttlQuickViz.openGraph",
+          "group": "navigation"
+        }
+      ],
+      "editor/title": [
+        {
+          "when": "resourceExtname == .ttl",
+          "command": "ttlQuickViz.openGraph",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc -p ./ --noEmit",
+    "compile": "node esbuild.config.mjs --minify",
+    "watch": "node esbuild.config.mjs --watch",
+    "lint": "eslint src --ext ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "build:webview": "node scripts/build-webview.mjs",
+    "build": "npm run build:webview && npm run typecheck && npm run compile",
+    "package": "npm run build && vsce package",
+    "vscode:prepublish": "npm run build"
+  },
+  "devDependencies": {
+    "@types/n3": "^1.26.1",
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.95.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "@vscode/vsce": "^3.0.0",
+    "esbuild": "^0.28.0",
+    "eslint": "^8.57.0",
+    "typescript": "^5.4.0",
+    "vitest": "^4.1.5"
+  },
+  "dependencies": {
+    "n3": "^1.17.0"
+  }
+}

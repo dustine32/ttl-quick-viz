@@ -1,7 +1,7 @@
 # CLAUDE.md — ttl-quick-viz (repo root)
 
 Local dev tool for visually inspecting property graphs converted from RDF/Turtle
-(GO-CAM / Reactome / pathways2GO output). **Three sibling subprojects**, not a
+(GO-CAM / Reactome / pathways2GO output). **Four sibling subprojects**, not a
 monorepo workspace:
 
 - `conversion/` — Python package `ttl2json` (CLI entry `ttl-viz-convert`,
@@ -17,16 +17,26 @@ monorepo workspace:
   selectable from the toolbar; bottom **TTL source pane** synced to selection.
   Browser hits the api directly via `VITE_API_URL` (default
   `http://localhost:8000/api`) — **no Vite proxy.**
+- `vscode/` — VSCode extension that registers a Custom Editor for `*.ttl`
+  files. Reuses the `site/` SPA as a webview bundle (built via
+  `npm run build:webview` in `site/`, output in `dist-webview/`). Conversion
+  runs in the extension host via a TypeScript port of `ttl2json` (uses `n3`).
+  No FastAPI, no localhost. See `vscode/CLAUDE.md`.
 
-Pipeline: `conversion` → filesystem JSON (`GRAPHS_DIR`) → `api` (HTTP, CORS=*) → `site`.
-Conversion can also be triggered through the api (which imports `ttl2json`) so
-the site has a "Rebuild all" affordance (`Shift+R` / toolbar More menu).
+Browser pipeline: `conversion` → filesystem JSON (`GRAPHS_DIR`) → `api` (HTTP,
+CORS=*) → `site`. Conversion can also be triggered through the api (which imports
+`ttl2json`) so the site has a "Rebuild all" affordance (`Shift+R` / toolbar More
+menu).
+
+Extension pipeline: `vscode/src/conversion/` (TS port of `ttl2json`) reads
+`document.getText()` directly, posts the graph to the webview (which is the
+site SPA built with a postMessage-backed `baseQuery`).
 
 ## Authority: per-subproject CLAUDE.md wins
 
 When working **inside** a subproject, `api/CLAUDE.md`, `conversion/CLAUDE.md`,
-and `site/CLAUDE.md` are authoritative for that subtree. This file is only for
-cross-cutting concerns.
+`site/CLAUDE.md`, and `vscode/CLAUDE.md` are authoritative for that subtree.
+This file is only for cross-cutting concerns.
 
 ## Cross-cutting invariants
 
@@ -38,8 +48,9 @@ cross-cutting concerns.
   `node_link_data`), normalized in `api/src/app/domain/translate.py` into
   `api/src/app/domain/models.py` (`Graph`, `GraphNode`, `GraphEdge`,
   `GraphSummary`, `GraphConversionResult`, `ConvertResponse`), and consumed by
-  `site/src/features/graph/types.ts`. Any change to one requires coordinated
-  edits across all three — otherwise the site breaks at runtime.
+  `site/src/features/graph/types.ts`. The vscode extension produces the same
+  site shape **directly** via `vscode/src/conversion/convert.ts` — touch all
+  four locations when changing the wire shape.
 - **`api/` imports `conversion/` as a path-dep.** See `api/pyproject.toml`
   (`ttl-quick-viz-conversion = { path = "../conversion", develop = true }`).
   Renaming a public symbol in `conversion/src/ttl2json/__init__.py` breaks the
@@ -102,3 +113,11 @@ Authoritative "how we build here" references for new contributors. Per-subprojec
   vertical: upper + bottom-TTL-pane; horizontal: left + main + right) and
   `Toolbar.tsx` (renderer `Select`, standalone-mode `SegmentedControl`,
   layout picker, More menu with Rebuild-all + Copy link).
+- VSCode extension entry: `vscode/src/extension.ts` registers
+  `TtlGraphEditorProvider` (`vscode/src/editor/`). The webview HTML loads the
+  bundled SPA from `vscode/media/` (built from `site/` via
+  `npm run build:webview`).
+- Webview-side wire: `site/src/webview/main.tsx` (alternate Vite entry),
+  `site/src/webview/webviewBaseQuery.ts` (postMessage-backed RTK Query
+  `baseQuery`), `site/vite.config.webview.ts` (build config that aliases the
+  SPA's `graphApiBaseQuery` to the webview one).

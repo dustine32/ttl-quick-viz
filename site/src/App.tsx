@@ -1,6 +1,7 @@
 import { useAppSelector } from '@/app/hooks';
 import { DiffPicker } from '@/features/diff';
 import { GraphCanvas, StandaloneList } from '@/features/graph';
+import { isWebviewMode } from '@/features/viewer';
 import { CytoscapeCanvas } from '@/features/graph-cytoscape';
 import { ForceCanvas, ForceCanvas3D } from '@/features/graph-force';
 import { SigmaCanvas } from '@/features/graph-sigma';
@@ -51,7 +52,7 @@ export default function App() {
           </>
         )}
       </div>
-      <DiffPicker />
+      {!isWebviewMode() && <DiffPicker />}
     </AppShell>
   );
 }
