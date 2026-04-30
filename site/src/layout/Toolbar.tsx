@@ -12,6 +12,7 @@ import {
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
 import { setRenderer, type GraphRenderer, useConvertAllMutation } from '@/features/graph';
 import { SearchBox } from '@/features/search';
+import { isWebviewMode } from '@/features/viewer';
 import {
   LayoutPicker,
   selectStandaloneMode,
@@ -27,6 +28,9 @@ export function Toolbar() {
   const [convertAll, { isLoading: rebuilding }] = useConvertAllMutation();
   const layoutVisible =
     standaloneMode !== 'only' && (renderer === 'xyflow' || renderer === 'cytoscape');
+  // In the webview, "rebuild all" has no api to call and the page URL is a
+  // vscode-resource:// link that's useless to share — hide both.
+  const webview = isWebviewMode();
 
   const handleRebuildAll = async () => {
     try {
@@ -144,17 +148,19 @@ export function Toolbar() {
           {layoutVisible && <LayoutPicker />}
         </div>
 
-        <Tooltip label="Rebuild all graphs (Shift+R)" withArrow>
-          <ActionIcon
-            variant="subtle"
-            color="gray"
-            aria-label="Rebuild all graphs"
-            onClick={handleRebuildAll}
-            loading={rebuilding}
-          >
-            <LuRefreshCw size={16} />
-          </ActionIcon>
-        </Tooltip>
+        {!webview && (
+          <Tooltip label="Rebuild all graphs (Shift+R)" withArrow>
+            <ActionIcon
+              variant="subtle"
+              color="gray"
+              aria-label="Rebuild all graphs"
+              onClick={handleRebuildAll}
+              loading={rebuilding}
+            >
+              <LuRefreshCw size={16} />
+            </ActionIcon>
+          </Tooltip>
+        )}
 
         <Menu position="bottom-end" shadow="md" width={220}>
           <Menu.Target>
@@ -165,14 +171,18 @@ export function Toolbar() {
             </Tooltip>
           </Menu.Target>
           <Menu.Dropdown>
-            <Menu.Label>Share</Menu.Label>
-            <Menu.Item
-              leftSection={copied ? <LuCheck size={14} /> : <LuLink size={14} />}
-              onClick={copyLink}
-              color={copied ? 'teal' : undefined}
-            >
-              {copied ? 'Link copied' : 'Copy shareable link'}
-            </Menu.Item>
+            {!webview && (
+              <>
+                <Menu.Label>Share</Menu.Label>
+                <Menu.Item
+                  leftSection={copied ? <LuCheck size={14} /> : <LuLink size={14} />}
+                  onClick={copyLink}
+                  color={copied ? 'teal' : undefined}
+                >
+                  {copied ? 'Link copied' : 'Copy shareable link'}
+                </Menu.Item>
+              </>
+            )}
             <Menu.Item
               leftSection={<LuDownload size={14} />}
               disabled

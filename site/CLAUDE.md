@@ -191,6 +191,33 @@ worked examples.
   - "More" `Menu`: **Rebuild all graphs** (`Shift+R`), **Copy shareable
     link**, **Export image** (disabled — placeholder).
 
+## Webview build (for the VSCode extension)
+
+A second Vite build produces a webview-ready bundle that the `vscode/`
+extension consumes:
+
+- Entry: `src/webview/main.tsx` (alternate root that listens for postMessage
+  events from the extension host instead of fetching from the api).
+- HTML: `index.webview.html` (separate from the SPA's `index.html`).
+- BaseQuery swap: `vite.config.webview.ts` aliases
+  `@/features/graph/slices/graphApiBaseQuery` →
+  `@/webview/webviewBaseQuery`. The webview baseQuery resolves graph / TTL
+  data from a module-level cache populated by `postMessage` events; HTTP is
+  never hit.
+- Build: `npm run build:webview` → `dist-webview/`. The extension's
+  `vscode/scripts/build-webview.mjs` invokes this and copies the output into
+  `vscode/media/`.
+
+The webview reuses `App.tsx`, all renderers, the TTL pane, the inspector,
+view-config, etc. unchanged — only the data plumbing differs. RTK Query's
+hooks (`useGetGraphQuery`, `useGetGraphTtlQuery`, etc.) work as-is because
+the swapped baseQuery satisfies the same `BaseQueryFn` contract.
+
+Limitations of the webview build: diff / history features
+(`useGetGraphHistoryQuery`, `useGetGraphTtlAtQuery`) are no-ops — there's
+no api / git in the extension. Those panels render but report "not
+available" or empty.
+
 ## Common commands
 
 Run from `site/`:
@@ -199,6 +226,8 @@ Run from `site/`:
 - `npm run dev` — Vite dev server (default 5173). Requires `api/` on `:8000`.
 - `npm start` — same as dev but binds `0.0.0.0:4242`.
 - `npm run build` — `tsc -b && vite build`.
+- `npm run build:webview` — Vite build using `vite.config.webview.ts`,
+  output `dist-webview/`. Consumed by the `vscode/` extension.
 - `npm run preview` — serve the production build.
 - `npm run lint` — ESLint flat config (`eslint.config.js`).
 - `npm test` / `npm run test:watch` — Vitest (jsdom, Testing Library).
@@ -207,8 +236,10 @@ Run from `site/`:
 
 - `vite.config.ts` does **not** define a dev proxy. The browser hits the
   api directly.
-- `src/features/graph/slices/graphApiSlice.ts` sets `baseUrl:
-  import.meta.env.VITE_API_URL`. Configure it in `site/.env` (see
+- The HTTP `baseQuery` lives in
+  `src/features/graph/slices/graphApiBaseQuery.ts` (kept separate so the
+  webview build can alias it out). It calls `fetchBaseQuery({ baseUrl:
+  import.meta.env.VITE_API_URL })`. Configure it in `site/.env` (see
   `.env.example`). Default for local dev: `http://localhost:8000/api`.
 - The api is CORS-permissive in dev (`allow_origins=["*"]`) — no origin
   configuration needed.
@@ -219,8 +250,9 @@ Run from `site/`:
 ## Gotchas
 
 - **Wire-shape drift:** `src/features/graph/types.ts` must match
-  `api/src/app/domain/models.py` and the JSON emitted by
-  `conversion/src/ttl2json/core.py`. Change all three (or a shared
+  `api/src/app/domain/models.py`, the JSON emitted by
+  `conversion/src/ttl2json/core.py`, and the TS port in
+  `vscode/src/conversion/convert.ts`. Change all four (or a shared
   contract) together.
 - **Seven renderers:** every new feature needs a conscious call — one,
   some, or all. Favor putting logic in `features/view-config/` or

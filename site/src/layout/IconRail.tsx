@@ -15,6 +15,7 @@ import {
   toggleRightPanel,
   type RightPanelTab,
 } from '@/features/ui';
+import { isWebviewMode } from '@/features/viewer';
 import { ShortcutsModal } from '@/layout/ShortcutsModal';
 
 type RailItem = {
@@ -44,15 +45,18 @@ export function IconRail() {
 
   // Two semantic groups: data toggles (Graphs) and panel toggles
   // (Inspector / View / TTL). A divider keeps them distinct in the rail.
-  const dataGroup: RailItem[] = [
-    {
-      key: 'graphs',
-      icon: <LuDatabase size={18} />,
-      label: 'Graphs (Ctrl+B)',
-      active: leftPanelOpen,
-      onClick: () => dispatch(toggleLeftPanel()),
-    },
-  ];
+  // The graph list is hidden in webview mode — only one file is open there.
+  const dataGroup: RailItem[] = isWebviewMode()
+    ? []
+    : [
+        {
+          key: 'graphs',
+          icon: <LuDatabase size={18} />,
+          label: 'Graphs (Ctrl+B)',
+          active: leftPanelOpen,
+          onClick: () => dispatch(toggleLeftPanel()),
+        },
+      ];
 
   const panelGroup: RailItem[] = [
     {
@@ -88,11 +92,13 @@ export function IconRail() {
           {dataGroup.map((item) => (
             <RailButton key={item.key} item={item} />
           ))}
-          <div
-            className="my-1.5 h-px w-6"
-            style={{ background: 'var(--color-border)' }}
-            aria-hidden
-          />
+          {dataGroup.length > 0 && (
+            <div
+              className="my-1.5 h-px w-6"
+              style={{ background: 'var(--color-border)' }}
+              aria-hidden
+            />
+          )}
           {panelGroup.map((item) => (
             <RailButton key={item.key} item={item} />
           ))}

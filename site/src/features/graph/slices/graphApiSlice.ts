@@ -1,4 +1,5 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { createApi } from '@reduxjs/toolkit/query/react';
+import { baseQuery } from '@/features/graph/slices/graphApiBaseQuery';
 import type { Graph, GraphSummary } from '@/features/graph/types';
 
 export type GraphConversionResult = {
@@ -27,7 +28,7 @@ export type HistoryEntry = {
 
 export const graphApi = createApi({
   reducerPath: 'graphApi',
-  baseQuery: fetchBaseQuery({ baseUrl: import.meta.env.VITE_API_URL }),
+  baseQuery,
   tagTypes: ['Graphs', 'Graph', 'GraphTtl', 'GraphTtlHistorical', 'GraphHistory'],
   refetchOnFocus: true,
   refetchOnReconnect: true,
