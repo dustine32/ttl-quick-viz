@@ -8,7 +8,6 @@ import { clearSelection, selectEdge, selectNode } from '@/features/ui';
 import {
   applyView,
   colorForType,
-  formatIri,
   selectFocusDepth,
   selectFocusNodeId,
   selectHiddenPredicates,
@@ -22,7 +21,9 @@ import {
   useGraphDerivedData,
 } from '@/features/view-config';
 import { revealNode } from '@/features/view-config/viewConfigSlice';
-import { getCytoscapeLayout } from '@/features/graph-cytoscape/layouts';
+import { useFormatIri } from '@/features/labels';
+import { runLayoutSafely } from '@/features/graph-cytoscape/layouts';
+import { notifications } from '@mantine/notifications';
 import { registerCytoscapeExtensions } from '@/features/graph-cytoscape/register';
 
 registerCytoscapeExtensions();
@@ -35,6 +36,7 @@ export function CytoscapeCanvas() {
   const hiddenPredicates = useAppSelector(selectHiddenPredicates);
   const hiddenTypes = useAppSelector(selectHiddenTypes);
   const labelMode = useAppSelector(selectLabelMode);
+  const formatIri = useFormatIri();
   const layoutAlgo = useAppSelector(selectLayoutAlgoCytoscape);
   const sizeByDegree = useAppSelector(selectSizeByDegree);
   const focusNodeId = useAppSelector(selectFocusNodeId);
@@ -205,13 +207,26 @@ export function CytoscapeCanvas() {
           },
         },
       ],
-      layout: getCytoscapeLayout(layoutAlgo),
+      // Init with cytoscape's default grid layout (built-in, never throws).
+      // The real user-selected layout runs next via runLayoutSafely so a
+      // failing extension can't take the canvas down on first render.
       wheelSensitivity: 1.5,
       minZoom: 0.05,
       maxZoom: 4,
     });
 
     cyRef.current = cy;
+
+    const ranAlgo = runLayoutSafely(cy, layoutAlgo);
+    if (ranAlgo !== layoutAlgo) {
+      notifications.show({
+        color: 'yellow',
+        title: 'Layout fallback',
+        message:
+          '"' + layoutAlgo + '" failed; using "' + ranAlgo + '" instead. See console.',
+        autoClose: 5000,
+      });
+    }
 
     cy.on('tap', 'node', (e: EventObject) => {
       dispatch(selectNode(e.target.id()));
@@ -230,7 +245,7 @@ export function CytoscapeCanvas() {
       cy.destroy();
       cyRef.current = null;
     };
-  }, [filteredGraph, derived.nodeTypes, derived.degree, labelMode, layoutAlgo, sizeByDegree, diffOverlay, dispatch]);
+  }, [filteredGraph, derived.nodeTypes, derived.degree, labelMode, formatIri, layoutAlgo, sizeByDegree, diffOverlay, dispatch]);
 
   useEffect(() => {
     if (fitViewNonce === 0) return;
@@ -254,7 +269,18 @@ export function CytoscapeCanvas() {
 
   useEffect(() => {
     if (relayoutNonce === 0) return;
-    cyRef.current?.layout(getCytoscapeLayout(layoutAlgo)).run();
+    const cy = cyRef.current;
+    if (!cy) return;
+    const ranAlgo = runLayoutSafely(cy, layoutAlgo);
+    if (ranAlgo !== layoutAlgo) {
+      notifications.show({
+        color: 'yellow',
+        title: 'Layout fallback',
+        message:
+          '"' + layoutAlgo + '" failed; using "' + ranAlgo + '" instead. See console.',
+        autoClose: 5000,
+      });
+    }
   }, [relayoutNonce, layoutAlgo]);
 
   if (!selectedGraphId) {

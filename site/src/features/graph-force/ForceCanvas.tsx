@@ -12,7 +12,6 @@ import { clearSelection, selectNode } from '@/features/ui';
 import {
   applyView,
   colorForType,
-  formatIri,
   selectFocusDepth,
   selectFocusNodeId,
   selectHiddenPredicates,
@@ -26,6 +25,7 @@ import {
   useGraphDerivedData,
 } from '@/features/view-config';
 import { revealNode } from '@/features/view-config/viewConfigSlice';
+import { useFormatIri } from '@/features/labels';
 
 type ForceNode = NodeObject & {
   id: string;
@@ -57,6 +57,7 @@ export function ForceCanvas() {
   const hiddenPredicates = useAppSelector(selectHiddenPredicates);
   const hiddenTypes = useAppSelector(selectHiddenTypes);
   const labelMode = useAppSelector(selectLabelMode);
+  const formatIri = useFormatIri();
   const focusNodeId = useAppSelector(selectFocusNodeId);
   const focusDepth = useAppSelector(selectFocusDepth);
   const revealedNodeIds = useAppSelector(selectRevealedNodeIds);
@@ -131,7 +132,7 @@ export function ForceCanvas() {
       };
     });
     return { nodes, links };
-  }, [filteredGraph, derived.nodeTypes, derived.degree, labelMode, diffOverlay]);
+  }, [filteredGraph, derived.nodeTypes, derived.degree, labelMode, formatIri, diffOverlay]);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const fgRef = useRef<ForceGraphMethods<ForceNode, ForceLink> | undefined>(undefined);

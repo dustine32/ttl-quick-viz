@@ -4,7 +4,8 @@ import { LuArrowRight, LuCircle, LuSearch, LuShare2 } from 'react-icons/lu';
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
 import { useGetGraphQuery } from '@/features/graph';
 import { requestReveal, selectEdge, selectNode, setPaletteOpen } from '@/features/ui';
-import { formatIri, selectLabelMode } from '@/features/view-config';
+import { selectLabelMode } from '@/features/view-config';
+import { useFormatIri } from '@/features/labels';
 
 type NodeHit = {
   kind: 'node';
@@ -36,6 +37,7 @@ export function SearchBox() {
   const open = useAppSelector((s) => s.ui.paletteOpen);
   const graphId = useAppSelector((s) => s.graph.selectedGraphId);
   const labelMode = useAppSelector(selectLabelMode);
+  const formatIri = useFormatIri();
   const { data } = useGetGraphQuery(graphId, { skip: !graphId });
 
   const [query, setQuery] = useState('');
@@ -84,7 +86,7 @@ export function SearchBox() {
       };
     });
     return { nodeIndex: nodeHits, edgeIndex: edgeHits };
-  }, [data, labelMode]);
+  }, [data, labelMode, formatIri]);
 
   const { nodeMatches, edgeMatches } = useMemo(() => {
     const q = query.trim().toLowerCase();

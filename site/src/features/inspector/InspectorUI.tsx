@@ -2,6 +2,7 @@ import { ActionIcon, CopyButton, Tooltip } from '@mantine/core';
 import type { ReactNode } from 'react';
 import { LuArrowRight, LuCheck, LuCircleDot, LuCopy } from 'react-icons/lu';
 import type { DiffStatus } from '@/features/diff';
+import { useLabelResolver } from '@/features/labels';
 
 export function TypeChip({ kind }: { kind: 'node' | 'edge' }) {
   const config =
@@ -215,11 +216,15 @@ export function KvRow({
 // AttrRow renders an attribute key/value pair where the key is a real
 // identifier (e.g. `rdf:type`, `obo:RO_0002233`). Layout is stacked: qname on
 // top in mono, value below — long values get the full row width, and rdf:type
-// values render as colored chips.
+// values render as colored chips. IRI-looking values (ORCIDs, group URLs)
+// are resolved through the labels cache so contributors/groups display as
+// human-readable names where possible.
 export function AttrRow({ k, value }: { k: string; value: unknown }) {
+  const resolveLabel = useLabelResolver();
   const typed = isTypeKey(k);
   const types = typed ? extractTypeList(value) : [];
-  const stringValue = typed ? '' : formatAttrValue(value);
+  const stringValue = typed ? '' : formatAttrValue(value, resolveLabel);
+  const copyValue = typed ? '' : formatAttrValue(value);
   const accent = typed ? 'border-violet-300' : 'border-slate-200';
   const hoverAccent = typed ? '' : 'group-hover:border-sky-400';
 
@@ -231,8 +236,8 @@ export function AttrRow({ k, value }: { k: string; value: unknown }) {
         <code className="break-all font-mono text-[10.5px] leading-snug text-slate-600">
           {k}
         </code>
-        {!typed && stringValue && (
-          <CopyButton value={stringValue}>
+        {!typed && copyValue && (
+          <CopyButton value={copyValue}>
             {({ copied, copy }) => (
               <Tooltip label={copied ? 'Copied' : 'Copy'} withArrow openDelay={300}>
                 <ActionIcon
@@ -260,10 +265,26 @@ export function AttrRow({ k, value }: { k: string; value: unknown }) {
   );
 }
 
-function formatAttrValue(v: unknown): string {
+type LabelLookup = (iri: string, fallback?: string | null) => string | undefined;
+
+function looksLikeIri(s: string): boolean {
+  return s.startsWith('http://') || s.startsWith('https://');
+}
+
+function formatOne(v: unknown, lookup?: LabelLookup): string {
   if (v == null) return '';
-  if (Array.isArray(v)) return v.map((x) => String(x)).join(', ');
-  return String(v);
+  const s = String(v);
+  if (lookup && looksLikeIri(s)) {
+    const resolved = lookup(s);
+    if (resolved) return resolved + ' (' + s + ')';
+  }
+  return s;
+}
+
+function formatAttrValue(v: unknown, lookup?: LabelLookup): string {
+  if (v == null) return '';
+  if (Array.isArray(v)) return v.map((x) => formatOne(x, lookup)).join(', ');
+  return formatOne(v, lookup);
 }
 
 export function InspectorHeader({

@@ -1,4 +1,4 @@
-import { ActionIcon, Menu, SegmentedControl, Select, Tooltip } from '@mantine/core';
+import { ActionIcon, Menu, Popover, SegmentedControl, Select, Tooltip } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useState } from 'react';
 import {
@@ -8,12 +8,15 @@ import {
   LuLink,
   LuNetwork,
   LuRefreshCw,
+  LuSettings,
 } from 'react-icons/lu';
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
 import { setRenderer, type GraphRenderer, useConvertAllMutation } from '@/features/graph';
+import { ResolveLabelsButton } from '@/features/labels';
 import { SearchBox } from '@/features/search';
 import { isWebviewMode } from '@/features/viewer';
 import {
+  LabelDisplaySettings,
   LayoutPicker,
   selectStandaloneMode,
   setStandaloneMode,
@@ -147,6 +150,24 @@ export function Toolbar() {
           />
           {layoutVisible && <LayoutPicker />}
         </div>
+
+        <ResolveLabelsButton />
+
+        <Popover position="bottom-end" shadow="md" width={280} withArrow>
+          <Popover.Target>
+            <Tooltip label="Display settings" withArrow openDelay={300}>
+              <ActionIcon variant="subtle" color="gray" aria-label="Display settings">
+                <LuSettings size={16} />
+              </ActionIcon>
+            </Tooltip>
+          </Popover.Target>
+          <Popover.Dropdown>
+            <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
+              Label display
+            </div>
+            <LabelDisplaySettings />
+          </Popover.Dropdown>
+        </Popover>
 
         {!webview && (
           <Tooltip label="Rebuild all graphs (Shift+R)" withArrow>

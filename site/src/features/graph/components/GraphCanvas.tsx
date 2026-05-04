@@ -41,7 +41,6 @@ import { clearSelection, selectEdge, selectNode } from '@/features/ui';
 import {
   applyView,
   colorForType,
-  formatIri,
   selectFocusDepth,
   selectFocusNodeId,
   selectHiddenPredicates,
@@ -57,6 +56,7 @@ import {
   selectSwimlaneSubGroupBy,
   useGraphDerivedData,
 } from '@/features/view-config';
+import { useFormatIri } from '@/features/labels';
 import { revealNode } from '@/features/view-config/viewConfigSlice';
 
 const nodeTypes = { pretty: PrettyNode, lane: LaneNode };
@@ -72,6 +72,7 @@ export function GraphCanvas() {
   const hiddenPredicates = useAppSelector(selectHiddenPredicates);
   const hiddenTypes = useAppSelector(selectHiddenTypes);
   const labelMode = useAppSelector(selectLabelMode);
+  const formatIri = useFormatIri();
   const layoutAlgo = useAppSelector(selectLayoutAlgoXyflow);
   const focusNodeId = useAppSelector(selectFocusNodeId);
   const focusDepth = useAppSelector(selectFocusDepth);
@@ -120,7 +121,7 @@ export function GraphCanvas() {
       }
     }
     return m;
-  }, [filteredGraph, labelMode]);
+  }, [filteredGraph, labelMode, formatIri]);
   const widthFor = useCallback(
     (id: string) => estimateNodeWidth(displayLabelIndex.get(id) ?? id),
     [displayLabelIndex],
@@ -199,6 +200,7 @@ export function GraphCanvas() {
     filteredGraph,
     derived.nodeTypes,
     labelMode,
+    formatIri,
     displayLabelIndex,
     swimlaneMaxLanes,
     swimlaneGroupBy,
@@ -236,7 +238,7 @@ export function GraphCanvas() {
             : n.style,
         };
       }),
-    [layout.nodes, derived.nodeTypes, displayLabelIndex, labelMode, diffOverlay],
+    [layout.nodes, derived.nodeTypes, displayLabelIndex, labelMode, formatIri, diffOverlay],
   );
   const styledEdges = useMemo<Edge[]>(
     () =>
@@ -276,7 +278,7 @@ export function GraphCanvas() {
           },
         };
       }),
-    [layout.edges, labelMode, diffOverlay],
+    [layout.edges, labelMode, formatIri, diffOverlay],
   );
   const laneFlowNodes = useMemo<Node[]>(() => {
     if (!swimlaneLayout) return EMPTY_LANE_NODES;

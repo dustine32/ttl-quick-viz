@@ -12,6 +12,13 @@ export default defineConfig({
         find: /^@\/features\/graph\/slices\/graphApiBaseQuery$/,
         replacement: path.resolve(__dirname, 'src/webview/webviewBaseQuery.ts'),
       },
+      // Swap the labels-feature JSONP transport for a postMessage bridge.
+      // The browser webview CSP blocks both <script src=external> (JSONP)
+      // and fetch() to non-cspSource origins; the host does the GOlr call.
+      {
+        find: /^@\/features\/labels\/jsonpRequest$/,
+        replacement: path.resolve(__dirname, 'src/webview/labelsHostFetch.ts'),
+      },
       { find: '@', replacement: path.resolve(__dirname, 'src') },
     ],
   },

@@ -19,12 +19,30 @@ const EMPTY: GraphDerivedData = {
   degree: new Map(),
 };
 
+// OWL/RDFS meta-types — useful as supporting info in the inspector, but
+// uninformative for canvas coloring, swimlane grouping, or "what kind of
+// thing is this." When a node has both `owl:NamedIndividual` and a real
+// class IRI (the GO-CAM pattern), the real class wins.
+const META_TYPES = new Set([
+  'http://www.w3.org/2002/07/owl#NamedIndividual',
+  'http://www.w3.org/2002/07/owl#Class',
+  'http://www.w3.org/2002/07/owl#Thing',
+  'http://www.w3.org/2002/07/owl#ObjectProperty',
+  'http://www.w3.org/2002/07/owl#DatatypeProperty',
+  'http://www.w3.org/2002/07/owl#AnnotationProperty',
+  'http://www.w3.org/2000/01/rdf-schema#Resource',
+]);
+
 function primaryType(attrs: Record<string, unknown> | undefined): string | null {
   const t = attrs?.['rdf:type'];
-  if (Array.isArray(t) && t.length > 0 && typeof t[0] === 'string') {
-    return t[0];
+  if (!Array.isArray(t) || t.length === 0) return null;
+  for (const v of t) {
+    if (typeof v === 'string' && v && !META_TYPES.has(v)) return v;
   }
-  return null;
+  // All entries are meta-types — fall back to the first one rather than
+  // dropping the node into the "untyped" bucket.
+  const first = t[0];
+  return typeof first === 'string' && first ? first : null;
 }
 
 export function useGraphDerivedData(graph: Graph | undefined): GraphDerivedData {

@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
 import { useGetGraphQuery } from '@/features/graph';
 import { CountPill } from '@/features/view-config/CountPill';
-import { formatIri } from '@/features/view-config/prefixes';
+import { useFormatIri } from '@/features/labels';
 import { toggleTypeHidden } from '@/features/view-config/viewConfigSlice';
 import {
   selectHiddenTypes,
@@ -25,6 +25,7 @@ export function TypeLegend() {
   const { types } = useGraphDerivedData(data);
   const hidden = useAppSelector(selectHiddenTypes);
   const labelMode = useAppSelector(selectLabelMode);
+  const formatIri = useFormatIri();
   const [modalOpen, setModalOpen] = useState(false);
 
   if (types.length === 0) {
@@ -108,6 +109,7 @@ function TypeRow({
   labelMode: LabelMode;
   onToggle: () => void;
 }) {
+  const formatIri = useFormatIri();
   return (
     <button
       type="button"

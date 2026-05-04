@@ -20,7 +20,8 @@ import {
 } from '@/features/inspector/InspectorUI';
 import { MoreListModal } from '@/shared/components/MoreListModal';
 import { requestReveal, selectEdge, selectNode } from '@/features/ui';
-import { formatIri, selectLabelMode, useGraphDerivedData } from '@/features/view-config';
+import { selectLabelMode, useGraphDerivedData } from '@/features/view-config';
+import { useFormatIri } from '@/features/labels';
 
 const VISIBLE_NEIGHBOR_LIMIT = 20;
 
@@ -39,6 +40,7 @@ export function NodeInspector({ nodeId }: { nodeId: string }) {
   const [neighborsModalOpen, setNeighborsModalOpen] = useState(false);
 
   const labelMode = useAppSelector(selectLabelMode);
+  const formatIri = useFormatIri();
   const derived = useGraphDerivedData(data);
   const degree = derived.degree.get(nodeId) ?? 0;
   const node: GraphNode | undefined = data?.nodes.find((n) => n.id === nodeId);
@@ -241,6 +243,7 @@ function NeighborRow({
   onSelectNeighbor: () => void;
   labelMode: LabelMode;
 }) {
+  const formatIri = useFormatIri();
   const directionCls =
     direction === 'out'
       ? 'bg-blue-50 text-blue-600'

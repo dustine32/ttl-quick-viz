@@ -18,7 +18,6 @@ import { clearSelection, selectEdge, selectNode } from '@/features/ui';
 import {
   applyView,
   colorForType,
-  formatIri,
   selectFocusDepth,
   selectFocusNodeId,
   selectHiddenPredicates,
@@ -30,6 +29,7 @@ import {
   useGraphDerivedData,
 } from '@/features/view-config';
 import { revealNode } from '@/features/view-config/viewConfigSlice';
+import { useFormatIri } from '@/features/labels';
 import { buildTree } from '@/features/graph-tree/buildTree';
 import { expandAll, selectCollapsedIds } from '@/features/graph-tree/treeSlice';
 import { MindMapNode } from '@/features/graph-tree/MindMapNode';
@@ -78,6 +78,7 @@ export function TreeCanvas() {
   const hiddenPredicates = useAppSelector(selectHiddenPredicates);
   const hiddenTypes = useAppSelector(selectHiddenTypes);
   const labelMode = useAppSelector(selectLabelMode);
+  const formatIri = useFormatIri();
   const focusNodeId = useAppSelector(selectFocusNodeId);
   const focusDepth = useAppSelector(selectFocusDepth);
   const revealedNodeIds = useAppSelector(selectRevealedNodeIds);
@@ -167,7 +168,7 @@ export function TreeCanvas() {
       }
     }
     return m;
-  }, [treeGraph, labelMode]);
+  }, [treeGraph, labelMode, formatIri]);
 
   const hasChildrenSet = useMemo(() => {
     const set = new Set<string>();
@@ -245,6 +246,7 @@ export function TreeCanvas() {
     derived.nodeTypes,
     displayLabelIndex,
     labelMode,
+    formatIri,
     treeResult,
     subtreeColors,
     hasChildrenSet,
@@ -279,7 +281,7 @@ export function TreeCanvas() {
           markerEnd: undefined,
         };
       }),
-    [layout.edges, labelMode, subtreeColors, diffOverlay],
+    [layout.edges, labelMode, formatIri, subtreeColors, diffOverlay],
   );
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<NodeData>>([]);

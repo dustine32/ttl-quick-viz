@@ -9,15 +9,16 @@ import {
   selectFocusDepth,
   selectFocusNodeId,
 } from '@/features/view-config/selectors';
-import { formatIri } from '@/features/view-config/prefixes';
 import { selectLabelMode } from '@/features/view-config/selectors';
 import { useGetGraphQuery } from '@/features/graph';
+import { useFormatIri } from '@/features/labels';
 
 export function FocusControls() {
   const dispatch = useAppDispatch();
   const focusId = useAppSelector(selectFocusNodeId);
   const depth = useAppSelector(selectFocusDepth);
   const labelMode = useAppSelector(selectLabelMode);
+  const formatIri = useFormatIri();
   const selectedNodeId = useAppSelector((s) => s.ui.selectedNodeId);
   const graphId = useAppSelector((s) => s.graph.selectedGraphId);
   const { data } = useGetGraphQuery(graphId, { skip: !graphId });

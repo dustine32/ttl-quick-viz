@@ -73,5 +73,11 @@ export {
 } from '@/features/view-config/prefixes';
 export type { PrefixRegistry } from '@/features/view-config/prefixes';
 export { LabelModeToggle } from '@/features/view-config/LabelModeToggle';
+export { LabelDisplaySettings } from '@/features/view-config/LabelDisplaySettings';
+export {
+  modeToToggles,
+  togglesToMode,
+  type LabelToggles,
+} from '@/features/view-config/labelModeToggles';
 export { LayoutPicker } from '@/features/view-config/LayoutPicker';
 export { SwimlaneControls } from '@/features/view-config/SwimlaneControls';

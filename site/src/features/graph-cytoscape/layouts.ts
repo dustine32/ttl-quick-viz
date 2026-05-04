@@ -1,4 +1,4 @@
-import type { LayoutOptions } from 'cytoscape';
+import type { Core, LayoutOptions } from 'cytoscape';
 
 // Visual density: every layout's spacing knobs are tuned around this target.
 // To make the whole picker tighter or looser, scale these together — don't
@@ -113,14 +113,15 @@ export function getCytoscapeLayout(algo: string): LayoutOptions {
         randomize: true,
       } as unknown as LayoutOptions;
     case 'spread':
-      // Spread — disperses nodes by Voronoi after a CoSE prelayout. Use when
-      // a force layout has clumped components and you want them evenly spaced.
+      // Spread — disperses nodes by Voronoi. cytoscape-spread is unmaintained
+      // and crashes when its `prelayout: { name: 'cose' }` runs against
+      // disconnected components, so we omit prelayout entirely and let the
+      // built-in random init seed positions instead. Use sparingly.
       return {
         name: 'spread',
         animate: false,
         padding: PADDING,
         minDist: NODE_GAP,
-        prelayout: { name: 'cose' },
         maxFruchtermanReingoldIterations: 1000,
         maxExpandIterations: 4,
         randomize: true,
@@ -173,5 +174,28 @@ export function getCytoscapeLayout(algo: string): LayoutOptions {
         spacingFactor: SPACING_FACTOR + 0.15,
         animate: false,
       };
+  }
+}
+
+// Run a layout safely — some Cytoscape extensions (cytoscape-spread in
+// particular) can throw on disconnected components or tiny graphs and take
+// the canvas down with them. On failure, fall back to `breadthfirst` which
+// is built-in and never crashes. Returns the algorithm that actually ran so
+// the caller can surface a notification if a fallback was used.
+export function runLayoutSafely(cy: Core, algo: string): string {
+  try {
+    cy.layout(getCytoscapeLayout(algo)).run();
+    return algo;
+  } catch (err) {
+    console.warn(
+      '[cytoscape] layout "' + algo + '" failed; falling back to breadthfirst:',
+      err,
+    );
+    try {
+      cy.layout(getCytoscapeLayout('breadthfirst')).run();
+    } catch (fallbackErr) {
+      console.error('[cytoscape] breadthfirst fallback also failed:', fallbackErr);
+    }
+    return 'breadthfirst';
   }
 }

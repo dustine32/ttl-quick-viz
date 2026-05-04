@@ -2,7 +2,7 @@
   "name": "ttl-quick-viz",
   "displayName": "TTL Quick Viz",
   "description": "Open a .ttl file (Turtle / RDF) as an interactive property-graph view.",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "private": true,
   "publisher": "tmushayahama",
   "engines": {
