@@ -64,7 +64,16 @@ export function parse(hash: string): UrlState | null {
     out.r = r;
   }
   const lm = params.get('lm');
-  if (lm === 'prefixed' || lm === 'full' || lm === 'label') out.lm = lm;
+  if (
+    lm === 'prefixed' ||
+    lm === 'full' ||
+    lm === 'label' ||
+    lm === 'label-id' ||
+    lm === 'label-full' ||
+    lm === 'id-label'
+  ) {
+    out.lm = lm;
+  }
   const la = params.get('la');
   if (la) out.la = la;
   const lc = params.get('lc');

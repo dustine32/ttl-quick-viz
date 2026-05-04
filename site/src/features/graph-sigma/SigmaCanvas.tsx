@@ -26,7 +26,6 @@ const withOpacity = (hex: string, opacity: number): string => {
 import {
   applyView,
   colorForType,
-  formatIri,
   selectFocusDepth,
   selectFocusNodeId,
   selectHiddenPredicates,
@@ -39,6 +38,7 @@ import {
   useGraphDerivedData,
 } from '@/features/view-config';
 import { revealNode } from '@/features/view-config/viewConfigSlice';
+import { useFormatIri } from '@/features/labels';
 
 const DBLCLICK_MS = 300;
 
@@ -52,6 +52,7 @@ function SigmaLoader() {
   const hiddenPredicates = useAppSelector(selectHiddenPredicates);
   const hiddenTypes = useAppSelector(selectHiddenTypes);
   const labelMode = useAppSelector(selectLabelMode);
+  const formatIri = useFormatIri();
   const focusNodeId = useAppSelector(selectFocusNodeId);
   const focusDepth = useAppSelector(selectFocusDepth);
   const revealedNodeIds = useAppSelector(selectRevealedNodeIds);
@@ -170,7 +171,7 @@ function SigmaLoader() {
     }
 
     loadGraph(g);
-  }, [filteredGraph, derived.nodeTypes, derived.degree, labelMode, sizeByDegree, diffOverlay, loadGraph]);
+  }, [filteredGraph, derived.nodeTypes, derived.degree, labelMode, formatIri, sizeByDegree, diffOverlay, loadGraph]);
 
   useEffect(() => {
     if (fitViewNonce === 0) return;

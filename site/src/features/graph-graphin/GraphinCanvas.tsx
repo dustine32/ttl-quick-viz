@@ -8,7 +8,6 @@ import { clearSelection, selectNode } from '@/features/ui';
 import {
   applyView,
   colorForType,
-  formatIri,
   selectFocusDepth,
   selectFocusNodeId,
   selectHiddenPredicates,
@@ -21,12 +20,14 @@ import {
   useGraphDerivedData,
 } from '@/features/view-config';
 import { revealNode } from '@/features/view-config/viewConfigSlice';
+import { useFormatIri } from '@/features/labels';
 
 const DBLCLICK_MS = 300;
 
 export function GraphinCanvas() {
   const dispatch = useAppDispatch();
   const selectedGraphId = useAppSelector((s) => s.graph.selectedGraphId);
+  const formatIri = useFormatIri();
   const hiddenPredicates = useAppSelector(selectHiddenPredicates);
   const hiddenTypes = useAppSelector(selectHiddenTypes);
   const labelMode = useAppSelector(selectLabelMode);
@@ -176,7 +177,7 @@ export function GraphinCanvas() {
         { type: 'click-select', multiple: false },
       ],
     } as unknown as GraphOptions;
-  }, [filteredGraph, derived.nodeTypes, derived.degree, labelMode, sizeByDegree, diffOverlay]);
+  }, [filteredGraph, derived.nodeTypes, derived.degree, labelMode, formatIri, sizeByDegree, diffOverlay]);
 
   const graphRef = useRef<G6Graph | null>(null);
   const lastClickRef = useRef<{ id: string; at: number } | null>(null);

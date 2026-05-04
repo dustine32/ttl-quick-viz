@@ -8,6 +8,7 @@ import {
 } from '@/features/view-config';
 import { treeReducer } from '@/features/graph-tree/treeSlice';
 import { diffReducer } from '@/features/diff';
+import { LABELS_STORAGE_KEY, labelsReducer } from '@/features/labels';
 
 export const store = configureStore({
   reducer: {
@@ -16,6 +17,7 @@ export const store = configureStore({
     viewConfig: viewConfigReducer,
     tree: treeReducer,
     diff: diffReducer,
+    labels: labelsReducer,
     [graphApi.reducerPath]: graphApi.reducer,
   },
   middleware: (gDM) => gDM().concat(graphApi.middleware),
@@ -24,14 +26,26 @@ export const store = configureStore({
 setupListeners(store.dispatch);
 
 let lastPersistedStandaloneMode = store.getState().viewConfig.standaloneMode;
+let lastPersistedLabels = store.getState().labels.byIri;
 store.subscribe(() => {
-  const next = store.getState().viewConfig.standaloneMode;
-  if (next === lastPersistedStandaloneMode) return;
-  lastPersistedStandaloneMode = next;
-  try {
-    window.localStorage.setItem(STANDALONE_MODE_STORAGE_KEY, next);
-  } catch {
-    /* localStorage unavailable — silently skip */
+  const state = store.getState();
+  const nextStandalone = state.viewConfig.standaloneMode;
+  if (nextStandalone !== lastPersistedStandaloneMode) {
+    lastPersistedStandaloneMode = nextStandalone;
+    try {
+      window.localStorage.setItem(STANDALONE_MODE_STORAGE_KEY, nextStandalone);
+    } catch {
+      /* localStorage unavailable — silently skip */
+    }
+  }
+  const nextLabels = state.labels.byIri;
+  if (nextLabels !== lastPersistedLabels) {
+    lastPersistedLabels = nextLabels;
+    try {
+      window.localStorage.setItem(LABELS_STORAGE_KEY, JSON.stringify(nextLabels));
+    } catch {
+      /* localStorage unavailable or quota exceeded — silently skip */
+    }
   }
 });
 

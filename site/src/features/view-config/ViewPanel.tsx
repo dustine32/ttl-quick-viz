@@ -17,7 +17,7 @@ import { requestFitView, requestRelayout } from '@/features/ui';
 import { SectionHeader } from '@/features/inspector/InspectorUI';
 import { PredicateFilter } from '@/features/view-config/PredicateFilter';
 import { TypeLegend } from '@/features/view-config/TypeLegend';
-import { LabelModeToggle } from '@/features/view-config/LabelModeToggle';
+import { LabelDisplaySettings } from '@/features/view-config/LabelDisplaySettings';
 import { FocusControls } from '@/features/view-config/FocusControls';
 import { StylingControls } from '@/features/view-config/StylingControls';
 import { FilterControls } from '@/features/view-config/FilterControls';
@@ -93,7 +93,7 @@ export function ViewPanel() {
       </Section>
 
       <Section title="Labels" icon={<LuType size={11} />}>
-        <LabelModeToggle />
+        <LabelDisplaySettings />
       </Section>
 
       <Section title="Styling" icon={<LuPalette size={11} />}>

@@ -7,12 +7,12 @@ import { selectNode } from '@/features/ui';
 import {
   applyView,
   colorForType,
-  formatIri,
   selectHiddenPredicates,
   selectHiddenTypes,
   selectLabelMode,
   useGraphDerivedData,
 } from '@/features/view-config';
+import { useFormatIri } from '@/features/labels';
 
 export function StandaloneList() {
   const dispatch = useAppDispatch();
@@ -21,6 +21,7 @@ export function StandaloneList() {
   const hiddenPredicates = useAppSelector(selectHiddenPredicates);
   const hiddenTypes = useAppSelector(selectHiddenTypes);
   const labelMode = useAppSelector(selectLabelMode);
+  const formatIri = useFormatIri();
 
   const { data, isLoading, error } = useGetGraphQuery(selectedGraphId, {
     skip: !selectedGraphId,

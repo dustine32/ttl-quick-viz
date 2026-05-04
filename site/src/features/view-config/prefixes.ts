@@ -39,7 +39,12 @@ export function formatIri(
   options: { label?: string | null; prefixes?: PrefixRegistry } = {},
 ): string {
   const { label, prefixes = DEFAULT_PREFIXES } = options;
+  const prefixed = toPrefixed(iri, prefixes);
   if (mode === 'full') return iri;
-  if (mode === 'label' && label) return label;
-  return toPrefixed(iri, prefixes);
+  if (mode === 'prefixed') return prefixed;
+  if (mode === 'label') return label || prefixed;
+  if (mode === 'label-id') return label ? label + ' (' + prefixed + ')' : prefixed;
+  if (mode === 'label-full') return label ? label + ' (' + iri + ')' : iri;
+  if (mode === 'id-label') return label ? prefixed + ' (' + label + ')' : prefixed;
+  return prefixed;
 }

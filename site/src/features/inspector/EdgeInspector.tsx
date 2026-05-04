@@ -18,7 +18,8 @@ import {
   SectionHeader,
 } from '@/features/inspector/InspectorUI';
 import { requestReveal, selectNode } from '@/features/ui';
-import { formatIri, selectLabelMode } from '@/features/view-config';
+import { selectLabelMode } from '@/features/view-config';
+import { useFormatIri } from '@/features/labels';
 
 export function EdgeInspector({ edgeId }: { edgeId: string }) {
   const dispatch = useAppDispatch();
@@ -28,6 +29,7 @@ export function EdgeInspector({ edgeId }: { edgeId: string }) {
   const diffMap = useAppSelector((s) => s.diff.diffMap);
 
   const labelMode = useAppSelector(selectLabelMode);
+  const formatIri = useFormatIri();
   const edge: GraphEdge | undefined = data?.edges.find((e) => e.id === edgeId);
 
   // For "removed" edges, the id has the `__removed__|` prefix from useDiffOverlay.
@@ -154,6 +156,7 @@ function EndpointRow({
   labelMode: LabelMode;
   onClick: () => void;
 }) {
+  const formatIri = useFormatIri();
   return (
     <button
       type="button"

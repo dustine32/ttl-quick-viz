@@ -10,6 +10,7 @@ packages = [{ include = "ttl2json", from = "src" }]
 python = "^3.11"
 rdflib = ">=7.0"
 networkx = ">=3.0"
+pyyaml = ">=6.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = ">=8.0"

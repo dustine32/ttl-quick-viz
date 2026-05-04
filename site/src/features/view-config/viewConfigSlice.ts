@@ -1,7 +1,26 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import type { GraphRenderer } from '@/features/graph';
 
-export type LabelMode = 'prefixed' | 'full' | 'label';
+// Display modes for IRIs and IRI-like values:
+//   'label'      — just the human label (falls back to CURIE if no label)
+//   'prefixed'   — just the CURIE / short id (e.g. GO:0003674)
+//   'full'       — full IRI
+//   'label-id'   — label with CURIE in parens: "molecular function (GO:0003674)"
+//   'label-full' — label with full IRI in parens
+//   'id-label'   — CURIE with label in parens (legacy, still supported)
+//
+// 'label-id' is the default — most useful for pathways2GO debugging (you
+// see the readable name AND can trace it back to the source ID). The UI
+// exposes these as independent "Show labels" / "Show IDs" / "Use full IRI"
+// toggles in the toolbar's settings popover; the resulting combination is
+// projected into one of the modes above.
+export type LabelMode =
+  | 'label'
+  | 'prefixed'
+  | 'full'
+  | 'label-id'
+  | 'label-full'
+  | 'id-label';
 
 export type StandaloneMode = 'hide' | 'both' | 'only';
 
@@ -42,7 +61,7 @@ function loadStandaloneMode(): StandaloneMode {
 const initialState: ViewConfigState = {
   hiddenPredicates: [],
   hiddenTypes: [],
-  labelMode: 'prefixed',
+  labelMode: 'label-id',
   layoutAlgoXyflow: 'layered',
   layoutAlgoCytoscape: 'breadthfirst',
   focusNodeId: null,

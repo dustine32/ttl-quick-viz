@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { convert } from '../conversion';
 import type { Graph } from '../conversion/types';
+import { labelsFetch } from '../labels/hostFetch';
 import { getLog } from '../log';
 import { loadWebviewAssets, renderMissingBundleHtml, renderWebviewHtml } from './webviewHtml';
 
@@ -10,13 +11,15 @@ const log = getLog();
 
 type HostToWebview =
   | { type: 'graph/load'; graph: Graph; ttlText: string; fileName: string }
-  | { type: 'graph/error'; message: string; fileName: string };
+  | { type: 'graph/error'; message: string; fileName: string }
+  | { type: 'labels/fetched'; requestId: number; ok: boolean; json?: unknown; error?: string };
 
 type WebviewToHost =
   | { type: 'webview/ready' }
   | { type: 'webview/log'; message: string }
   | { type: 'webview/error'; message: string; source?: string; line?: number; col?: number; stack?: string | null }
-  | { type: 'reveal/line'; line: number };
+  | { type: 'reveal/line'; line: number }
+  | { type: 'labels/fetch'; requestId: number; url: string };
 
 export class TtlGraphEditorProvider implements vscode.CustomTextEditorProvider {
   public static readonly viewType = 'ttlQuickViz.graph';
@@ -119,6 +122,11 @@ export class TtlGraphEditorProvider implements vscode.CustomTextEditorProvider {
       }
       if (msg.type === 'reveal/line') {
         void revealLine(document.uri, msg.line);
+        return;
+      }
+      if (msg.type === 'labels/fetch') {
+        void handleLabelsFetch(webviewPanel.webview, msg.requestId, msg.url);
+        return;
       }
     });
 
@@ -141,6 +149,16 @@ export class TtlGraphEditorProvider implements vscode.CustomTextEditorProvider {
 function baseName(fsPath: string): string {
   const parts = fsPath.split(/[\\/]/);
   return parts[parts.length - 1] ?? fsPath;
+}
+
+async function handleLabelsFetch(webview: vscode.Webview, requestId: number, url: string): Promise<void> {
+  const result = await labelsFetch(url);
+  if (result.ok) {
+    void webview.postMessage({ type: 'labels/fetched', requestId, ok: true, json: result.json });
+  } else {
+    log.appendLine('[host] labels/fetch failed: ' + url + ' — ' + result.error);
+    void webview.postMessage({ type: 'labels/fetched', requestId, ok: false, error: result.error });
+  }
 }
 
 async function revealLine(uri: vscode.Uri, line: number): Promise<void> {

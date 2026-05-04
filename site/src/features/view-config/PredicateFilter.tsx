@@ -4,7 +4,7 @@ import { LuArrowRightLeft } from 'react-icons/lu';
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
 import { useGetGraphQuery } from '@/features/graph';
 import { CountPill } from '@/features/view-config/CountPill';
-import { formatIri } from '@/features/view-config/prefixes';
+import { useFormatIri } from '@/features/labels';
 import {
   setHiddenPredicates,
   togglePredicateHidden,
@@ -29,6 +29,7 @@ export function PredicateFilter() {
   const { predicates } = useGraphDerivedData(data);
   const hidden = useAppSelector(selectHiddenPredicates);
   const labelMode = useAppSelector(selectLabelMode);
+  const formatIri = useFormatIri();
   const [modalOpen, setModalOpen] = useState(false);
 
   if (predicates.length === 0) {
@@ -136,6 +137,7 @@ function PredicateRow({
   labelMode: LabelMode;
   onToggle: () => void;
 }) {
+  const formatIri = useFormatIri();
   const display =
     entry.predicate === '' ? '(no predicate)' : formatIri(entry.predicate, labelMode);
   return (

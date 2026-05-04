@@ -5,6 +5,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import { GraphCanvas } from '@/features/graph/components/GraphCanvas';
 import { diffReducer } from '@/features/diff/slices/diffSlice';
 import { graphReducer } from '@/features/graph/slices/graphSlice';
+import { labelsReducer } from '@/features/labels/labelsSlice';
 import { uiReducer } from '@/features/ui/uiSlice';
 import { viewConfigReducer } from '@/features/view-config/viewConfigSlice';
 
@@ -26,6 +27,7 @@ function makeStore(selectedGraphId: string) {
       ui: uiReducer,
       viewConfig: viewConfigReducer,
       diff: diffReducer,
+      labels: labelsReducer,
     },
     preloadedState: {
       graph: { selectedGraphId, renderer: 'xyflow' as const },

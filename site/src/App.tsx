@@ -1,6 +1,7 @@
 import { useAppSelector } from '@/app/hooks';
 import { DiffPicker } from '@/features/diff';
 import { GraphCanvas, StandaloneList } from '@/features/graph';
+import { useLabelsBootstrap } from '@/features/labels';
 import { isWebviewMode } from '@/features/viewer';
 import { CytoscapeCanvas } from '@/features/graph-cytoscape';
 import { ForceCanvas, ForceCanvas3D } from '@/features/graph-force';
@@ -25,6 +26,7 @@ export default function App() {
   const standaloneMode = useAppSelector(selectStandaloneMode);
   useAppHotkeys();
   useUrlSync();
+  useLabelsBootstrap();
 
   const showOrphansOnly = standaloneMode === 'only';
 
